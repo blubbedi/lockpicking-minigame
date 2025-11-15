@@ -1,27 +1,144 @@
+// modules/lockpicking-minigame/scripts/main.js
+
 const MODULE_ID = "lockpicking-minigame";
+const MODULE_TITLE = "Lockpicking Minigame";
+
+/* ---------------------------------------- */
+/* Hilfsfunktionen                          */
+/* ---------------------------------------- */
 
 /**
- * Kleines Lockpicking-Minispiel
- * - GM startet per Makro
- * - Minigame öffnet sich beim Spieler, der den Actor besitzt
+ * Hole den Sleight-of-Hand Bonus und passiven Wert aus einem D&D5e Actor.
+ * Rückgabe: { bonus, passive, reliable }
  */
+function getLockpickingData(actor) {
+  const system = actor.system ?? actor.data?.data ?? {};
+  let bonus = 0;
+  let passive = 10;
 
-/* ----------------------------------------- */
-/*  Basis: Minigame-Application              */
-/* ----------------------------------------- */
+  // Versuche den Skill "Sleight of Hand" (id = slt)
+  const skill = system.skills?.slt;
+  if (skill) {
+    bonus = skill.total ?? skill.mod ?? 0;
+  } else {
+    // Fallback: DEX-Modifikator
+    const dex = system.abilities?.dex;
+    bonus = dex?.mod ?? 0;
+  }
+
+  passive = 10 + bonus;
+
+  // Prüfe auf "Verlässliches Talent"
+  const hasReliableTalent = actor.items.some(i =>
+    i.type === "feat" &&
+    /verlässliches talent|reliable talent/i.test(i.name ?? "")
+  );
+
+  return { bonus, passive, reliable: hasReliableTalent };
+}
+
+/* ---------------------------------------- */
+/* Konfigurations-Dialog (GM)               */
+/* ---------------------------------------- */
+
+class LockpickingConfigApp extends FormApplication {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: "lockpicking-config",
+      title: "Schlossknacken",
+      template: `modules/${MODULE_ID}/templates/lock-config.hbs`,
+      width: 420
+    });
+  }
+
+  /** Liste aller Token-Actors auf der aktuellen Szene */
+  getData() {
+    const actors = canvas.scene?.tokens
+      ?.filter(t => !!t.actor)
+      .map(t => t.actor);
+
+    return {
+      actors: actors ?? [],
+      defaultDc: 15
+    };
+  }
+
+  async _updateObject(event, formData) {
+    event.preventDefault();
+
+    const actorId = formData.actorId;
+    const dc = Number(formData.dc) || 10;
+
+    const actor = game.actors.get(actorId);
+    if (!actor) {
+      ui.notifications.error(`${MODULE_TITLE}: Kein gültiger Charakter ausgewählt.`);
+      return;
+    }
+
+    const { bonus, passive, reliable } = getLockpickingData(actor);
+
+    // Besitzer bestimmen: erster Spieler mit OWNER-Recht
+    const ownerUser =
+      game.users.players.find(u => actor.testUserPermission(u, "OWNER")) ??
+      game.user; // Fallback GM
+
+    const actorName = actor.name ?? "Unbekannt";
+
+    // Auto-Erfolg, falls passiver Wert >= DC
+    if (passive >= dc) {
+      const msg = `${actorName} knackt das Schloss sofort.<br>` +
+        `<ul>` +
+        `<li>DC: ${dc}</li>` +
+        `<li>Bonus: ${bonus >= 0 ? "+" + bonus : bonus}</li>` +
+        `<li>Passiver Wert: ${passive} ≥ DC</li>` +
+        `</ul>` +
+        (reliable ? `<p><i>Verlässliches Talent berücksichtigt.</i></p>` : "");
+
+      ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor }),
+        content: msg
+      });
+
+      return;
+    }
+
+    // Chat-Nachricht: Minispiel startet
+    ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content:
+        `Lockpicking-Minispiel für ${actorName} gestartet (DC ${dc}, Bonus ${bonus}).`
+    });
+
+    // Socket-Nachricht an Besitzer-Client
+    const payload = {
+      action: "openMinigame",
+      actorUuid: actor.uuid,
+      dc,
+      bonus,
+      userId: ownerUser.id
+    };
+
+    console.log(`${MODULE_ID} | Sending openMinigame`, payload);
+    game.socket.emit(`module.${MODULE_ID}`, payload);
+  }
+}
+
+/* ---------------------------------------- */
+/* Minigame-Fenster                         */
+/* ---------------------------------------- */
 
 class LockpickingGameApp extends Application {
-  constructor(actor, options = {}) {
+  constructor(actor, options) {
     super(options);
     this.actor = actor;
-    this.dc = Number(options.dc) || 15;
-    this.bonus = Number(options.bonus) || 0;
+    this.dc = options.dc ?? 15;
+    this.bonus = options.bonus ?? 0;
 
-    // Minigame-State
-    this._interval = null;
-    this._position = 0;        // 0..1
-    this._direction = 1;       // 1 oder -1
+    // Minigame-Status
     this._running = false;
+    this._position = 0;
+    this._direction = 1;
+    this._interval = null;
   }
 
   static get defaultOptions() {
@@ -29,112 +146,116 @@ class LockpickingGameApp extends Application {
       id: "lockpicking-game",
       title: "Schlossknacken",
       template: `modules/${MODULE_ID}/templates/lock-game.hbs`,
-      classes: ["lockpicking-game"],
       width: 480,
       height: "auto",
+      popOut: true,
       resizable: false
     });
   }
 
-  getData(options = {}) {
-    const data = super.getData(options);
-    data.actor = this.actor;
-    data.dc = this.dc;
-    data.bonus = this.bonus;
-    data.position = this._position;
-    return data;
+  getData() {
+    return {
+      actorName: this.actor?.name ?? "Unbekannt",
+      dc: this.dc,
+      bonus: this.bonus
+    };
   }
 
   activateListeners(html) {
     super.activateListeners(html);
 
-    const startBtn = html.find("button.lp-start");
-    const stopBtn = html.find("button.lp-stop");
+    const startBtn = html.find("[data-action='start']");
+    const pickBtn = html.find("[data-action='pick']");
+    const bar = html.find("[data-role='bar']");
+    const marker = html.find("[data-role='marker']");
 
-    startBtn.on("click", (ev) => {
-      ev.preventDefault();
-      this._startMovement(html);
-    });
+    if (!startBtn.length || !pickBtn.length || !bar.length || !marker.length) {
+      console.warn(`${MODULE_ID} | Minigame-Elemente nicht gefunden.`);
+      return;
+    }
 
-    stopBtn.on("click", (ev) => {
-      ev.preventDefault();
-      this._stopAndResolve(html);
-    });
-  }
+    const updateMarker = () => {
+      const clamped = Math.max(0, Math.min(1, this._position));
+      marker.css("left", (clamped * 100) + "%");
+    };
 
-  _startMovement(html) {
-    if (this._running) return;
-    this._running = true;
-
-    const bar = html.find(".lp-bar-fill")[0];
-    if (!bar) return;
-
-    this._interval = setInterval(() => {
-      // Position bewegen
-      this._position += 0.02 * this._direction;
-      if (this._position >= 1) {
-        this._position = 1;
-        this._direction = -1;
-      } else if (this._position <= 0) {
-        this._position = 0;
-        this._direction = 1;
+    const stopGame = () => {
+      if (this._interval) {
+        clearInterval(this._interval);
+        this._interval = null;
       }
+      this._running = false;
+      startBtn.prop("disabled", false);
+      pickBtn.prop("disabled", !this._running);
+    };
 
-      // Visuell aktualisieren
-      bar.style.width = `${this._position * 100}%`;
-    }, 30);
-  }
+    startBtn.on("click", () => {
+      if (this._running) return;
 
-  async _stopAndResolve(html) {
-    if (!this._running) return;
-    this._running = false;
-    if (this._interval) {
-      clearInterval(this._interval);
-      this._interval = null;
-    }
+      this._running = true;
+      this._position = 0;
+      this._direction = 1;
 
-    // Trefferzone in der Mitte (z.B. 0.4–0.6)
-    const minZone = 0.4;
-    const maxZone = 0.6;
-    const inSweetSpot = this._position >= minZone && this._position <= maxZone;
+      startBtn.prop("disabled", true);
+      pickBtn.prop("disabled", false);
 
-    // Würfelwurf nur, wenn außerhalb Sweet Spot -> leichter Bonus / Malus möglich
-    let rollResult;
-    if (inSweetSpot) {
-      // Vorteil: Mindestwurf 10
-      const roll = await new Roll("1d20").roll({ async: true });
-      const value = Math.max(10, roll.total);
-      rollResult = { roll, value };
-    } else {
-      const roll = await new Roll("1d20").roll({ async: true });
-      rollResult = { roll, value: roll.total };
-    }
+      const speed = 0.015; // Bewegungsgeschwindigkeit
 
-    const total = rollResult.value + this.bonus;
-    const success = total >= this.dc;
-
-    // Chat-Ausgabe
-    const roll = rollResult.roll;
-    const flavor = `
-      <p><strong>${this.actor.name}</strong> versucht das Schloss zu knacken.</p>
-      <ul>
-        <li>DC: ${this.dc}</li>
-        <li>Bonus: ${this.bonus >= 0 ? "+" + this.bonus : this.bonus}</li>
-        <li>Wurf: ${roll.total} (effektiv ${rollResult.value})</li>
-        <li>Gesamt: ${total}</li>
-      </ul>
-      <p><strong>Ergebnis: ${success ? "Erfolg ✔" : "Fehlschlag ✘"}</strong></p>
-    `;
-
-    roll.toMessage({
-      speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-      flavor
+      this._interval = setInterval(() => {
+        this._position += speed * this._direction;
+        if (this._position >= 1) {
+          this._position = 1;
+          this._direction = -1;
+        } else if (this._position <= 0) {
+          this._position = 0;
+          this._direction = 1;
+        }
+        updateMarker();
+      }, 16);
     });
 
-    this.close();
+    pickBtn.on("click", () => {
+      if (!this._running) return;
+
+      stopGame();
+
+      // "Sweet Spot" liegt in der Mitte 0.45–0.55
+      const diff = Math.abs(this._position - 0.5);
+      let modifier = 0;
+
+      if (diff < 0.05) modifier = 10;
+      else if (diff < 0.1) modifier = 5;
+      else if (diff < 0.2) modifier = 0;
+      else modifier = -5;
+
+      const roll = new Roll("1d20");
+      roll.roll({ async: false });
+
+      const total = roll.total + this.bonus + modifier;
+
+      const success = total >= this.dc;
+
+      const formatted = roll.render();
+
+      ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+        content:
+          `<p><strong>${this.actor.name}</strong> versucht das Schloss zu knacken.</p>` +
+          `<p>Wurf: ${formatted} + Bonus (${this.bonus >= 0 ? "+" + this.bonus : this.bonus}) ` +
+          `+ Modifikator (${modifier >= 0 ? "+" + modifier : modifier}) = <strong>${total}</strong></p>` +
+          `<p>DC: ${this.dc} – ${success ? "<span style='color:green'>Erfolg!</span>" : "<span style='color:red'>Fehlschlag.</span>"}</p>`
+      });
+
+      this.close();
+    });
+
+    // Anfangsstatus
+    pickBtn.prop("disabled", true);
+    updateMarker();
   }
 
   close(options) {
+    // Sicherheit: ggf. Intervall beenden
     if (this._interval) {
       clearInterval(this._interval);
       this._interval = null;
@@ -143,30 +264,48 @@ class LockpickingGameApp extends Application {
   }
 }
 
-/* ----------------------------------------- */
-/*  Ready-Hook & Socket-Handling             */
-/* ----------------------------------------- */
+/* ---------------------------------------- */
+/* Globale API & Socket                     */
+/* ---------------------------------------- */
 
-Hooks.once("ready", () => {
-  console.log(`${MODULE_ID} | ready on user=${game.user.id}`);
+function registerAPI() {
+  const module = game.modules.get(MODULE_ID);
+  if (!module) return;
 
-  // Socket-Listener auf ALLEN Clients
+  // API für Makros / andere Module
+  module.api = {
+    /**
+     * Öffnet das Konfigurationsfenster (nur GM).
+     */
+    openConfig: () => {
+      if (!game.user.isGM) {
+        ui.notifications.info("Nur der Spielleiter kann das Lockpicking-Minispiel starten.");
+        return;
+      }
+      const app = new LockpickingConfigApp();
+      app.render(true);
+    }
+  };
+
+  // Praktischer Kurzlink
+  game.lockpickingMinigame = {
+    openConfig: module.api.openConfig
+  };
+}
+
+function registerSocketListener() {
+  // Listener auf ALLEN Clients registrieren
   game.socket.on(`module.${MODULE_ID}`, async (data) => {
     if (!data || data.action !== "openMinigame") return;
 
-    console.log(
-      `${MODULE_ID} | socket received`,
-      data,
-      "on user",
-      game.user.id
-    );
+    console.log(`${MODULE_ID} | socket received`, data, "on user", game.user.id);
 
-    // Falls eine userId gesetzt ist, nur für diesen Client reagieren
+    // Nur der adressierte User (oder GM-Fallback) reagiert
     if (data.userId && data.userId !== game.user.id) return;
 
-    const actor = game.actors.get(data.actorId);
+    const actor = await fromUuid(data.actorUuid);
     if (!actor) {
-      console.warn(`${MODULE_ID} | Actor not found on client`, data.actorId);
+      console.warn(`${MODULE_ID} | Actor not found for uuid`, data.actorUuid);
       return;
     }
 
@@ -176,19 +315,15 @@ Hooks.once("ready", () => {
     });
     app.render(true);
   });
+}
 
-  // Optional: kleine Helper-API bereitstellen
-  game.lockpickingMinigame = {
-    openForActor(actor, { dc = 15, bonus = 0 } = {}, userId = null) {
-      game.socket.emit(`module.${MODULE_ID}`, {
-        action: "openMinigame",
-        actorId: actor.id,
-        dc,
-        bonus,
-        userId
-      });
-    }
-  };
+/* ---------------------------------------- */
+/* Hooks                                    */
+/* ---------------------------------------- */
 
-  console.log(`${MODULE_ID} | API registered: game.lockpickingMinigame`);
+Hooks.once("ready", () => {
+  console.log(`${MODULE_ID} | ready, user=${game.user.id}, isGM=${game.user.isGM}`);
+
+  registerAPI();
+  registerSocketListener();
 });
