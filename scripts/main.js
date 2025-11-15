@@ -365,5 +365,11 @@ Hooks.once("ready", () => {
       bonus: data.bonus
     });
     app.render(true);
+    
   });
 });
+window.LockpickingGameApp = LockpickingGameApp;
+window.LockpickingConfigApp = LockpickingConfigApp;
+window.openLockpickingGame = openLockpickingGame;
+
+
