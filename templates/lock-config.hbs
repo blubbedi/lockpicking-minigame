@@ -1,0 +1,38 @@
+<div class="lp-config">
+  <div class="form-group">
+    <label>Ziel-Charakter (Token auf aktueller Szene):</label>
+    <select name="actorId" required>
+      {{#if actors.length}}
+        {{#each actors}}
+          <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+      {{else}}
+        <option value="">Keine Token gefunden</option>
+      {{/if}}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Schwierigkeitsgrad (DC):</label>
+    <input
+      type="number"
+      name="dc"
+      value="{{defaultDc}}"
+      min="5"
+      max="30"
+      step="1"
+      required
+    />
+  </div>
+
+  <p class="notes">
+    Hinweis: Ist der passive Wert (10 + Fingerfertigkeit) des Charakters
+    ≥ DC, wird das Schloss automatisch geknackt und kein Minispiel gestartet.
+  </p>
+
+  <footer class="sheet-footer flexrow">
+    <button type="submit" class="lp-button-primary">
+      Lockpicking starten
+    </button>
+  </footer>
+</div>
