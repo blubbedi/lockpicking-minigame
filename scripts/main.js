@@ -34,9 +34,11 @@ class LockpickingMinigame {
     // Bevorzugt: Nicht-GM Spieler mit Owner-Rechten
     for (const u of users) {
       if (u.isGM) continue;
+
+      // Moderner Weg
       try {
-        if (actor.testUserPermission
-          && actor.testUserPermission(u, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+        if (actor.testUserPermission &&
+            actor.testUserPermission(u, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
           return u;
         }
       } catch (e) {
@@ -58,7 +60,8 @@ class LockpickingMinigame {
    * Vom GM aufgerufen: Startet Schlossknacken für einen Actor bei einem DC.
    * - Prüft passiven Wert (10 + Fingerfertigkeit)
    * - Auto-Erfolg nur, wenn Reliable Talent vorhanden UND passiver Wert ≥ DC
-   * - Sonst wird das Minigame gezielt an den Spieler-Client geschickt.
+   * - Sonst wird das Minigame gezielt an den Spieler-Client geschickt
+   *   UND zusätzlich beim GM geöffnet.
    */
   static async startForActor(actor, dc) {
     if (!actor) {
@@ -88,9 +91,11 @@ class LockpickingMinigame {
     }
 
     // ❗ Kein Auto-Erfolg -> Minigame nötig
+
+    // 1) Ziel-User (Spieler) ermitteln
     const targetUser = this.findOwningUser(actor);
     if (!targetUser) {
-      ui.notifications.warn("Lockpicking: Kein passender Spieler-User gefunden. Minigame wird beim GM geöffnet.");
+      ui.notifications.warn("Lockpicking: Kein passender Spieler-User gefunden. Minigame läuft nur beim SL.");
     }
 
     const payload = {
@@ -103,6 +108,13 @@ class LockpickingMinigame {
 
     console.log(`${MODULE_ID} | sending socket`, payload);
     game.socket.emit(`module.${MODULE_ID}`, payload);
+
+    // 2) Immer auch beim GM lokal anzeigen (Debug + Kontrolle)
+    const app = new LockpickingGameApp(actor, {
+      dc,
+      bonus
+    });
+    app.render(true);
   }
 
   /** Auto-Erfolg ohne Minigame (Reliable Talent + hoher passiver Wert) */
