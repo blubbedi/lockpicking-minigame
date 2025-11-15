@@ -11,9 +11,10 @@ function clamp(value, min, max) {
 class LockpickingMinigame {
 
   /**
-   * GM startet Schlossknacken für Actor x mit DC y
+   * GM startet Schlossknacken für Actor x mit DC y.
+   * targetUserId = User, bei dem ggf. das Minigame geöffnet werden soll.
    */
-  static async startForActor(actor, dc) {
+  static async startForActor(actor, dc, targetUserId) {
     if (!actor) {
       ui.notifications.error("Lockpicking: Kein Actor ausgewählt.");
       return;
@@ -21,7 +22,7 @@ class LockpickingMinigame {
 
     dc = Number(dc) || 10;
 
-    // Fingerfertigkeitsbonus abrufen
+    // Fingerfertigkeitsbonus abrufen (Fingerfertigkeit / Sleight of Hand)
     const sys = actor.system ?? {};
     const skills = sys.skills ?? {};
     const sle = skills.slt?.total ?? skills.sle?.total ?? 0;
@@ -29,20 +30,29 @@ class LockpickingMinigame {
     const bonus = Number(sle) || 0;
     const passive = 10 + bonus;
 
-    console.log(`${MODULE_ID} | Actor=${actor.name}, Bonus=${bonus}, Passive=${passive}, DC=${dc}`);
+    console.log(
+      `${MODULE_ID} | Actor=${actor.name}, Bonus=${bonus}, Passive=${passive}, DC=${dc}, targetUser=${targetUserId}`
+    );
 
-    // Auto-Erfolg
+    // Auto-Erfolg -> nur Chatnachricht, kein Minigame
     if (passive >= dc) {
       await this.handleAutoSuccess(actor, dc, bonus, passive);
       return;
     }
 
-    // Minigame starten
-    const gameApp = new LockpickingGameApp(actor, { dc, bonus });
-    gameApp.render(true);
+    // Minigame nötig -> per Socket an den Ziel-User schicken
+    const payload = {
+      action: "openMinigame",
+      actorId: actor.id,
+      dc,
+      bonus,
+      userId: targetUserId ?? null
+    };
+
+    game.socket.emit(`module.${MODULE_ID}`, payload);
   }
 
-  /** Auto-ERFOLG **/
+  /** Auto-ERFOLG (ohne Minigame) **/
   static async handleAutoSuccess(actor, dc, bonus, passive) {
     const content = `
       <p><strong>${actor.name}</strong> knackt das Schloss sofort.</p>
@@ -51,6 +61,7 @@ class LockpickingMinigame {
         <li>Bonus: +${bonus}</li>
         <li>Passiver Wert: ${passive} ≥ DC</li>
       </ul>
+      <p>Kein Minispiel nötig – der Charakter ist zu geübt.</p>
     `;
 
     await ChatMessage.create({
@@ -73,7 +84,7 @@ class LockpickingMinigame {
     });
   }
 
-  /** Misserfolg nach minigame **/
+  /** Misserfolg nach Minigame **/
   static async handleFailure(actor, dc, info = "") {
     const content = `
       <p><strong>${actor.name}</strong> scheitert beim Schlossknacken.</p>
@@ -87,9 +98,38 @@ class LockpickingMinigame {
     });
   }
 
-  /** Config öffnen **/
+  /** Config öffnen (wird z.B. per Macro aufgerufen) **/
   static openConfig() {
     new LockpickingConfigApp().render(true);
+  }
+
+  /**
+   * Hilfsfunktion: ermittelt, welcher Spieler das Minigame sehen soll.
+   * Nimmt den ersten aktiven Spieler, der den Actor besitzt.
+   */
+  static findOwningUser(actor) {
+    const players = game.users?.players ?? [];
+    // nur nicht-GM Spieler
+    const nonGmPlayers = players.filter(u => !u.isGM);
+
+    // Foundry v10+ : ownership-Objekt
+    const ownership = actor.ownership ?? {};
+
+    let target = null;
+    for (const user of nonGmPlayers) {
+      const level = ownership[user.id];
+      if (typeof level === "number" && level >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
+        target = user;
+        break;
+      }
+    }
+
+    // Fallback: erster aktiver GM
+    if (!target) {
+      target = game.users?.activeGM ?? game.user;
+    }
+
+    return target;
   }
 }
 
@@ -133,12 +173,14 @@ class LockpickingConfigApp extends FormApplication {
       return;
     }
 
-    await LockpickingMinigame.startForActor(actor, dc);
+    const targetUser = LockpickingMinigame.findOwningUser(actor);
+
+    await LockpickingMinigame.startForActor(actor, dc, targetUser?.id);
   }
 }
 
 
-/** Timing-Minigame **/
+/** Timing-Minigame (läuft auf dem Client, der die Socket-Nachricht erhält) **/
 class LockpickingGameApp extends Application {
 
   constructor(actor, options = {}) {
@@ -201,7 +243,7 @@ class LockpickingGameApp extends Application {
       this._pos = 0;
       this._dir = 1;
       btnTry.prop("disabled", false);
-      status.text("Bewege den Marker und treffe den Sweetspot…");
+      status.text("Beobachte die Bewegung und klicke im richtigen Moment…");
 
       this._interval = setInterval(() => {
         this._pos += this._dir * 2;
@@ -262,4 +304,21 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   console.log(`${MODULE_ID} | ready`);
+
+  // Socket-Listener: reagiert auf Nachrichten vom GM
+  game.socket.on(`module.${MODULE_ID}`, async (data) => {
+    if (!data || data.action !== "openMinigame") return;
+
+    // Wenn ein bestimmter User adressiert ist: nur dieser reagiert
+    if (data.userId && data.userId !== game.user.id) return;
+
+    const actor = game.actors.get(data.actorId);
+    if (!actor) return;
+
+    const app = new LockpickingGameApp(actor, {
+      dc: data.dc,
+      bonus: data.bonus
+    });
+    app.render(true);
+  });
 });
