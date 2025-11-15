@@ -2,128 +2,100 @@
 
 const MODULE_ID = "lockpicking-minigame";
 
-/**
- * Kleine Hilfsfunktion: Wert zwischen min und max einklemmen.
- */
+/** Hilfsfunktion **/
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-/**
- * Zentrale Steuerklasse für das Lockpicking-Minispiel.
- */
+/** Hauptklasse **/
 class LockpickingMinigame {
+
   /**
-   * Vom GM aufgerufen: Startet den Ablauf für einen Actor bei gegebener DC.
-   * - Prüft passiven Wert (10 + Fingerfertigkeit)
-   * - Wenn >= DC -> Auto-Erfolg, kein Minigame
-   * - Sonst -> Timing-Minispiel
+   * GM startet Schlossknacken für Actor x mit DC y
    */
   static async startForActor(actor, dc) {
     if (!actor) {
-      ui.notifications.error("Lockpicking: Kein gültiger Actor ausgewählt.");
+      ui.notifications.error("Lockpicking: Kein Actor ausgewählt.");
       return;
     }
 
     dc = Number(dc) || 10;
 
-    // --- Skill ermitteln ---
-    // Wir nehmen Sleight of Hand (DE: Fingerfertigkeit) als Basis.
+    // Fingerfertigkeitsbonus abrufen
     const sys = actor.system ?? {};
     const skills = sys.skills ?? {};
-
-    // Unterschiedliche dnd5e-Versionen: sle oder slt
-    const sle =
-      skills.sle?.total ?? // ältere dnd5e-Versionen
-      skills.slt?.total ?? // neuere dnd5e-Versionen
-      0;
+    const sle = skills.slt?.total ?? skills.sle?.total ?? 0;
 
     const bonus = Number(sle) || 0;
-    const passive = 10 + bonus; // "passives" Schlossknacken
+    const passive = 10 + bonus;
 
-    console.log(
-      `${MODULE_ID} | Actor=${actor.name}, Bonus=${bonus}, Passive=${passive}, DC=${dc}`
-    );
+    console.log(`${MODULE_ID} | Actor=${actor.name}, Bonus=${bonus}, Passive=${passive}, DC=${dc}`);
 
-    // --- Auto-Erfolg, wenn Skill den DC "out-scaled" ---
+    // Auto-Erfolg
     if (passive >= dc) {
       await this.handleAutoSuccess(actor, dc, bonus, passive);
       return;
     }
 
-    // --- Minigame nötig ---
+    // Minigame starten
     const gameApp = new LockpickingGameApp(actor, { dc, bonus });
     gameApp.render(true);
   }
 
-  /**
-   * Auto-Erfolg ohne Minigame (z.B. hoher Rogue mit Reliable Talent).
-   */
+  /** Auto-ERFOLG **/
   static async handleAutoSuccess(actor, dc, bonus, passive) {
     const content = `
-      <p><strong>${actor.name}</strong> knackt das Schloss ohne Mühe.</p>
+      <p><strong>${actor.name}</strong> knackt das Schloss sofort.</p>
       <ul>
         <li>DC: ${dc}</li>
         <li>Bonus: +${bonus}</li>
-        <li>Passiver Wert: ${passive} (≥ DC)</li>
+        <li>Passiver Wert: ${passive} ≥ DC</li>
       </ul>
-      <p>Kein Minispiel nötig – der Charakter ist zu geübt.</p>
     `;
 
     await ChatMessage.create({
       content,
       speaker: ChatMessage.getSpeaker({ actor })
     });
-
-    ui.notifications.info(
-      `Lockpicking: ${actor.name} übertrifft den DC – automatischer Erfolg.`
-    );
   }
 
-  /**
-   * Erfolg nach bestandenem Minigame.
-   */
-  static async handleSuccess(actor, dc, resultInfo = "") {
+  /** Erfolg nach Minigame **/
+  static async handleSuccess(actor, dc, info = "") {
     const content = `
       <p><strong>${actor.name}</strong> knackt das Schloss!</p>
       <p>DC: ${dc}</p>
-      ${resultInfo ? `<p>${resultInfo}</p>` : ""}
+      <p>${info}</p>
     `;
+
     await ChatMessage.create({
       content,
       speaker: ChatMessage.getSpeaker({ actor })
     });
   }
 
-  /**
-   * Fehlschlag nach Minigame.
-   */
-  static async handleFailure(actor, dc, resultInfo = "") {
+  /** Misserfolg nach minigame **/
+  static async handleFailure(actor, dc, info = "") {
     const content = `
       <p><strong>${actor.name}</strong> scheitert beim Schlossknacken.</p>
       <p>DC: ${dc}</p>
-      ${resultInfo ? `<p>${resultInfo}</p>` : ""}
+      <p>${info}</p>
     `;
+
     await ChatMessage.create({
       content,
       speaker: ChatMessage.getSpeaker({ actor })
     });
   }
 
-  /**
-   * Öffnet die GM-Konfiguration (Actor + DC).
-   */
+  /** Config öffnen **/
   static openConfig() {
-    const app = new LockpickingConfigApp();
-    app.render(true);
+    new LockpickingConfigApp().render(true);
   }
 }
 
-/**
- * GM-Dialog: Actor auswählen + DC setzen.
- * Nutzt FormApplication -> Template muss im <form> stehen.
- */
+/** GM-Konfiguration **/
 class LockpickingConfigApp extends FormApplication {
+
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "lockpicking-config",
@@ -135,16 +107,10 @@ class LockpickingConfigApp extends FormApplication {
     });
   }
 
-  /**
-   * Bietet alle Player-Actor zur Auswahl an.
-   */
   getData() {
     const actors = (game.actors?.contents ?? [])
-      .filter((a) => a.hasPlayerOwner)
-      .map((a) => ({
-        id: a.id,
-        name: a.name
-      }));
+      .filter(a => a.hasPlayerOwner)
+      .map(a => ({ id: a.id, name: a.name }));
 
     return {
       actors,
@@ -152,22 +118,18 @@ class LockpickingConfigApp extends FormApplication {
     };
   }
 
-  /**
-   * Wird ausgelöst, wenn das Formular abgeschickt wird.
-   */
   async _updateObject(event, formData) {
     const actorId = formData.actorId;
     const dc = Number(formData.dc) || 10;
 
     if (!actorId) {
-      ui.notifications.error("Lockpicking: Bitte einen Charakter auswählen.");
+      ui.notifications.error("Bitte einen Charakter auswählen.");
       return;
     }
 
     const actor = game.actors.get(actorId);
     if (!actor) {
-      ui.notifications.error("Lockpicking: Actor nicht gefunden.");
-      console.error(`${MODULE_ID} | ActorId nicht gefunden:`, actorId);
+      ui.notifications.error("Actor nicht gefunden.");
       return;
     }
 
@@ -175,19 +137,19 @@ class LockpickingConfigApp extends FormApplication {
   }
 }
 
-/**
- * Das eigentliche Minigame – simples, aber immersives Timing-Spiel:
- * Eine Markierung läuft hin und her, der Spieler klickt, wenn sie im Sweetspot ist.
- */
+
+/** Timing-Minigame **/
 class LockpickingGameApp extends Application {
+
   constructor(actor, options = {}) {
     super(options);
     this.actor = actor;
-    this.dc = options.dc ?? 15;
-    this.bonus = options.bonus ?? 0;
+    this.dc = options.dc;
+    this.bonus = options.bonus;
+
     this._interval = null;
-    this._direction = 1;
-    this._position = 0; // 0–100
+    this._pos = 0;
+    this._dir = 1;
   }
 
   static get defaultOptions() {
@@ -197,19 +159,16 @@ class LockpickingGameApp extends Application {
       template: `modules/${MODULE_ID}/templates/lock-game.hbs`,
       width: 500,
       height: "auto",
-      popOut: true,
-      resizable: false
+      popOut: true
     });
   }
 
   getData() {
-    // Sweetspot-Breite abhängig vom DC: je höher DC, desto kleiner der Bereich.
-    const baseWidth = 40; // in %
+    const baseWidth = 40;
     const minWidth = 10;
-    const difficultyFactor = clamp((this.dc - 10) / 10, 0, 1);
-    const sweetWidth = Math.round(
-      baseWidth - difficultyFactor * (baseWidth - minWidth)
-    );
+    const diff = clamp((this.dc - 10) / 10, 0, 1);
+
+    const sweetWidth = Math.round(baseWidth - diff * (baseWidth - minWidth));
 
     return {
       actorName: this.actor.name,
@@ -222,15 +181,15 @@ class LockpickingGameApp extends Application {
   activateListeners(html) {
     super.activateListeners(html);
 
-    const startBtn = html.find(".lp-start");
-    const tryBtn = html.find(".lp-try");
-    const statusEl = html.find(".lp-status");
+    const btnStart = html.find(".lp-start");
+    const btnTry = html.find(".lp-try");
     const marker = html.find(".lp-marker");
     const zone = html.find(".lp-zone");
+    const status = html.find(".lp-status");
 
-    // Sweetspot zufällig positionieren
-    const sweetWidth = Number(zone.data("sweet-width")) || 30;
+    const sweetWidth = Number(zone.data("sweet-width"));
     const sweetLeft = Math.random() * (100 - sweetWidth);
+
     zone.css({
       left: `${sweetLeft}%`,
       width: `${sweetWidth}%`
@@ -238,78 +197,66 @@ class LockpickingGameApp extends Application {
 
     const startGame = () => {
       if (this._interval) clearInterval(this._interval);
-      this._position = 0;
-      this._direction = 1;
-      tryBtn.prop("disabled", false);
-      statusEl.text("Beobachte die Bewegung und klicke im richtigen Moment...");
+
+      this._pos = 0;
+      this._dir = 1;
+      btnTry.prop("disabled", false);
+      status.text("Bewege den Marker und treffe den Sweetspot…");
 
       this._interval = setInterval(() => {
-        this._position += this._direction * 2; // Geschwindigkeit
-        if (this._position >= 100) {
-          this._position = 100;
-          this._direction = -1;
-        } else if (this._position <= 0) {
-          this._position = 0;
-          this._direction = 1;
-        }
-        marker.css("left", `${this._position}%`);
+        this._pos += this._dir * 2;
+
+        if (this._pos >= 100) { this._pos = 100; this._dir = -1; }
+        if (this._pos <= 0)   { this._pos = 0;   this._dir = 1; }
+
+        marker.css("left", `${this._pos}%`);
       }, 30);
     };
 
     const finishGame = async () => {
-      if (this._interval) {
-        clearInterval(this._interval);
-        this._interval = null;
-      }
-      tryBtn.prop("disabled", true);
+      if (this._interval) clearInterval(this._interval);
+      btnTry.prop("disabled", true);
 
-      const markerPos = this._position;
-      const zoneLeft = sweetLeft;
-      const zoneRight = sweetLeft + sweetWidth;
+      const pos = this._pos;
+      const zL = sweetLeft;
+      const zR = sweetLeft + sweetWidth;
 
-      const inZone = markerPos >= zoneLeft && markerPos <= zoneRight;
-
-      if (inZone) {
-        statusEl.text("Du triffst den Sweetspot – das Schloss gibt nach!");
-        const center = (zoneLeft + zoneRight) / 2;
-        const offCenter = Math.abs(markerPos - center);
-        const quality =
-          offCenter < sweetWidth * 0.1
-            ? "Nahezu perfekter Treffer."
-            : "Solider Treffer.";
+      if (pos >= zL && pos <= zR) {
+        const center = (zL + zR) / 2;
+        const off = Math.abs(pos - center);
+        const perfect = off < sweetWidth * 0.1;
 
         await LockpickingMinigame.handleSuccess(
           this.actor,
           this.dc,
-          `${quality} (Timing-Minispiel bestanden)`
+          perfect ? "Perfekter Treffer!" : "Guter Treffer!"
         );
-        this.close();
+
       } else {
-        statusEl.text("Das Schloss klemmt – du verfehlst den Sweetspot.");
         await LockpickingMinigame.handleFailure(
           this.actor,
           this.dc,
-          "Timing-Minispiel verfehlt."
+          "Timing verfehlt."
         );
-        this.close();
       }
+
+      this.close();
     };
 
-    startBtn.on("click", startGame);
-    tryBtn.on("click", finishGame);
+    btnStart.on("click", startGame);
+    btnTry.on("click", finishGame);
   }
 
-  close(options) {
+  close(options = {}) {
     if (this._interval) clearInterval(this._interval);
     return super.close(options);
   }
 }
 
-// --- Hooks / Namespace-Registrierung ---
 
+/** Hooks **/
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | init`);
-  // Globaler Zugriff, z.B. im Macro: game.lockpickingMinigame.openConfig()
   game.lockpickingMinigame = LockpickingMinigame;
 });
 
