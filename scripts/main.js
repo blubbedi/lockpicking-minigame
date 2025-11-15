@@ -8,7 +8,7 @@ function clamp(value, min, max) {
 }
 
 /**
- * Haupt-Steuerklasse für das Lockpicking-Minispiel
+ * Zentrale Steuerklasse für das Lockpicking-Minispiel
  */
 class LockpickingMinigame {
 
@@ -24,10 +24,41 @@ class LockpickingMinigame {
   }
 
   /**
+   * Ermittelt, welcher User das Minigame sehen soll.
+   * Nimmt einen nicht-GM-User, der den Actor besitzt.
+   * Fallback: aktiver GM.
+   */
+  static findOwningUser(actor) {
+    const users = game.users?.contents ?? [];
+
+    // Bevorzugt: Nicht-GM Spieler mit Owner-Rechten
+    for (const u of users) {
+      if (u.isGM) continue;
+      try {
+        if (actor.testUserPermission
+          && actor.testUserPermission(u, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+          return u;
+        }
+      } catch (e) {
+        console.warn(`${MODULE_ID} | testUserPermission failed`, e);
+      }
+
+      // Fallback über ownership-Objekt
+      const ownLevel = actor.ownership?.[u.id] ?? 0;
+      if (ownLevel >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
+        return u;
+      }
+    }
+
+    // Wenn kein passender Spieler gefunden: aktiver GM oder aktueller User
+    return game.users?.activeGM ?? game.user;
+  }
+
+  /**
    * Vom GM aufgerufen: Startet Schlossknacken für einen Actor bei einem DC.
    * - Prüft passiven Wert (10 + Fingerfertigkeit)
    * - Auto-Erfolg nur, wenn Reliable Talent vorhanden UND passiver Wert ≥ DC
-   * - Sonst wird das Minigame per Socket an den Spieler geschickt.
+   * - Sonst wird das Minigame gezielt an den Spieler-Client geschickt.
    */
   static async startForActor(actor, dc) {
     if (!actor) {
@@ -57,12 +88,17 @@ class LockpickingMinigame {
     }
 
     // ❗ Kein Auto-Erfolg -> Minigame nötig
-    // Wird per Socket an alle Clients geschickt; nur der Besitzer des Actors reagiert.
+    const targetUser = this.findOwningUser(actor);
+    if (!targetUser) {
+      ui.notifications.warn("Lockpicking: Kein passender Spieler-User gefunden. Minigame wird beim GM geöffnet.");
+    }
+
     const payload = {
       action: "openMinigame",
       actorId: actor.id,
       dc,
-      bonus
+      bonus,
+      userId: targetUser?.id ?? null
     };
 
     console.log(`${MODULE_ID} | sending socket`, payload);
@@ -170,8 +206,7 @@ class LockpickingConfigApp extends FormApplication {
 }
 
 /**
- * Das eigentliche Timing-Minispiel – läuft auf dem Client des Spielers,
- * der den Actor besitzt.
+ * Das eigentliche Timing-Minispiel – läuft auf dem Ziel-Client.
  */
 class LockpickingGameApp extends Application {
 
@@ -217,16 +252,16 @@ class LockpickingGameApp extends Application {
     super.activateListeners(html);
 
     const btnStart = html.find(".lp-start");
-    const btnTry = html.find(".lp-try");
-    const marker = html.find(".lp-marker");
-    const zone = html.find(".lp-zone");
-    const status = html.find(".lp-status");
+    const btnTry   = html.find(".lp-try");
+    const marker   = html.find(".lp-marker");
+    const zone     = html.find(".lp-zone");
+    const status   = html.find(".lp-status");
 
     const sweetWidth = Number(zone.data("sweet-width"));
-    const sweetLeft = Math.random() * (100 - sweetWidth);
+    const sweetLeft  = Math.random() * (100 - sweetWidth);
 
     zone.css({
-      left: `${sweetLeft}%`,
+      left:  `${sweetLeft}%`,
       width: `${sweetWidth}%`
     });
 
@@ -253,12 +288,12 @@ class LockpickingGameApp extends Application {
       btnTry.prop("disabled", true);
 
       const pos = this._pos;
-      const zL = sweetLeft;
-      const zR = sweetLeft + sweetWidth;
+      const zL  = sweetLeft;
+      const zR  = sweetLeft + sweetWidth;
 
       if (pos >= zL && pos <= zR) {
-        const center = (zL + zR) / 2;
-        const off = Math.abs(pos - center);
+        const center  = (zL + zR) / 2;
+        const off     = Math.abs(pos - center);
         const perfect = off < sweetWidth * 0.1;
 
         await LockpickingMinigame.handleSuccess(
@@ -290,13 +325,13 @@ class LockpickingGameApp extends Application {
 
 /** Hooks **/
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | init`);
+  console.log(`${MODULE_ID} | init (user=${game.user?.id})`);
   // Globaler Zugriff, z.B. Macro: game.lockpickingMinigame.openConfig()
   game.lockpickingMinigame = LockpickingMinigame;
 });
 
 Hooks.once("ready", () => {
-  console.log(`${MODULE_ID} | ready`);
+  console.log(`${MODULE_ID} | ready (user=${game.user?.id})`);
 
   // Socket-Listener: reagiert auf Nachrichten vom GM
   game.socket.on(`module.${MODULE_ID}`, async (data) => {
@@ -304,12 +339,14 @@ Hooks.once("ready", () => {
 
     console.log(`${MODULE_ID} | socket received`, data, "on user", game.user.id);
 
-    const actor = game.actors.get(data.actorId);
-    if (!actor) return;
+    // Wenn ein bestimmter User adressiert ist: nur dieser reagiert
+    if (data.userId && data.userId !== game.user.id) return;
 
-    // Minigame nur beim Spieler, der den Actor besitzt (kein GM)
-    if (game.user.isGM) return;
-    if (!actor.isOwner) return;
+    const actor = game.actors.get(data.actorId);
+    if (!actor) {
+      console.warn(`${MODULE_ID} | Actor not found on client`, data.actorId);
+      return;
+    }
 
     const app = new LockpickingGameApp(actor, {
       dc: data.dc,
