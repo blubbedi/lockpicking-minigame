@@ -2,7 +2,7 @@
   "id": "lockpicking-minigame",
   "title": "Lockpicking Minigame",
   "description": "Ein kleines Schlossknack-Minispiel für Foundry VTT.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "compatibility": {
     "minimum": "11",
     "verified": "11"
@@ -25,9 +25,10 @@
   "packs": [],
   "url": "https://github.com/blubbedi/lockpicking-minigame",
   "manifest": "https://raw.githubusercontent.com/blubbedi/lockpicking-minigame/main/module.json",
-  "download": "https://github.com/blubbedi/lockpicking-minigame/archive/refs/tags/v1.1.1.zip",
+  "download": "https://github.com/blubbedi/lockpicking-minigame/archive/refs/tags/v1.1.2.zip",
   "license": "LICENSE"
 }
+
 
 
 
