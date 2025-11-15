@@ -14,9 +14,10 @@ class LockpickingMinigame {
 
     // --- Skill ermitteln ---
     // Wir nehmen Sleight of Hand (DE: Fingerfertigkeit) als Basis.
-    // Je nach dnd5e-Version ist es "sle" oder "slt". Wir versuchen beides.
     const sys = actor.system ?? {};
     const skills = sys.skills ?? {};
+
+    // Unterschiedliche dnd5e-Versionen: sle oder slt
     const sle =
       skills.sle?.total ?? // ältere dnd5e-Versionen
       skills.slt?.total ?? // neuere dnd5e-Versionen
@@ -155,7 +156,7 @@ class LockpickingConfigApp extends FormApplication {
  * Eine Markierung läuft hin und her, der Spieler klickt, wenn sie im Sweetspot ist.
  */
 class LockpickingGameApp extends Application {
-  constructor(actor, options) {
+  constructor(actor, options = {}) {
     super(options);
     this.actor = actor;
     this.dc = options.dc ?? 15;
@@ -182,7 +183,10 @@ class LockpickingGameApp extends Application {
     // Sweetspot-Breite abhängig vom DC: je höher DC, desto kleiner der Bereich.
     const baseWidth = 40; // in %
     const minWidth = 10;
-    const difficultyFactor = Math.clamped((this.dc - 10) / 10, 0, 1);
+    const difficultyFactor = Math.min(
+      1,
+      Math.max(0, (this.dc - 10) / 10)
+    );
     const sweetWidth = Math.round(
       baseWidth - difficultyFactor * (baseWidth - minWidth)
     );
@@ -201,7 +205,6 @@ class LockpickingGameApp extends Application {
     const startBtn = html.find(".lp-start");
     const tryBtn = html.find(".lp-try");
     const statusEl = html.find(".lp-status");
-    const bar = html.find(".lp-bar");
     const marker = html.find(".lp-marker");
     const zone = html.find(".lp-zone");
 
@@ -248,7 +251,6 @@ class LockpickingGameApp extends Application {
 
       if (inZone) {
         statusEl.text("Du triffst den Sweetspot – das Schloss gibt nach!");
-        // Kleiner „Ergebnistext“
         const center = (zoneLeft + zoneRight) / 2;
         const offCenter = Math.abs(markerPos - center);
         const quality =
