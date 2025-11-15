@@ -1,13 +1,13 @@
-<div class="lp-config">
+<form class="lp-config">
   <div class="form-group">
-    <label>Ziel-Charakter (Token auf aktueller Szene):</label>
+    <label>Ziel-Charakter (Player-Actor):</label>
     <select name="actorId" required>
       {{#if actors.length}}
         {{#each actors}}
           <option value="{{this.id}}">{{this.name}}</option>
         {{/each}}
       {{else}}
-        <option value="">Keine Token gefunden</option>
+        <option value="">Keine Player-Actor gefunden</option>
       {{/if}}
     </select>
   </div>
@@ -35,4 +35,4 @@
       Lockpicking starten
     </button>
   </footer>
-</div>
+</form>
