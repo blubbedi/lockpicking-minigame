@@ -1,8 +1,23 @@
 // scripts/main.js
 
+const MODULE_ID = "lockpicking-minigame";
+
+/**
+ * Kleine Hilfsfunktion: Wert zwischen min und max einklemmen.
+ */
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Zentrale Steuerklasse für das Lockpicking-Minispiel.
+ */
 class LockpickingMinigame {
   /**
    * Vom GM aufgerufen: Startet den Ablauf für einen Actor bei gegebener DC.
+   * - Prüft passiven Wert (10 + Fingerfertigkeit)
+   * - Wenn >= DC -> Auto-Erfolg, kein Minigame
+   * - Sonst -> Timing-Minispiel
    */
   static async startForActor(actor, dc) {
     if (!actor) {
@@ -23,11 +38,11 @@ class LockpickingMinigame {
       skills.slt?.total ?? // neuere dnd5e-Versionen
       0;
 
-    const bonus = sle;
+    const bonus = Number(sle) || 0;
     const passive = 10 + bonus; // "passives" Schlossknacken
 
     console.log(
-      `Lockpicking | Actor=${actor.name}, Bonus=${bonus}, Passive=${passive}, DC=${dc}`
+      `${MODULE_ID} | Actor=${actor.name}, Bonus=${bonus}, Passive=${passive}, DC=${dc}`
     );
 
     // --- Auto-Erfolg, wenn Skill den DC "out-scaled" ---
@@ -96,7 +111,7 @@ class LockpickingMinigame {
   }
 
   /**
-   * Öffnet die GM-Konfiguration.
+   * Öffnet die GM-Konfiguration (Actor + DC).
    */
   static openConfig() {
     const app = new LockpickingConfigApp();
@@ -106,28 +121,29 @@ class LockpickingMinigame {
 
 /**
  * GM-Dialog: Actor auswählen + DC setzen.
+ * Nutzt FormApplication -> Template muss im <form> stehen.
  */
 class LockpickingConfigApp extends FormApplication {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "lockpicking-config",
       title: "Lockpicking Minigame",
-      template:
-        "modules/lockpicking-minigame/templates/lock-config.hbs",
+      template: `modules/${MODULE_ID}/templates/lock-config.hbs`,
       width: 400,
       height: "auto",
       closeOnSubmit: true
     });
   }
 
+  /**
+   * Bietet alle Player-Actor zur Auswahl an.
+   */
   getData() {
-    // Alle Token auf der aktuellen Szene als Auswahl
-    const tokens = canvas?.tokens?.placeables ?? [];
-    const actors = tokens
-      .filter((t) => !!t.actor)
-      .map((t) => ({
-        id: t.actor.id,
-        name: t.name
+    const actors = (game.actors?.contents ?? [])
+      .filter((a) => a.hasPlayerOwner)
+      .map((a) => ({
+        id: a.id,
+        name: a.name
       }));
 
     return {
@@ -136,17 +152,25 @@ class LockpickingConfigApp extends FormApplication {
     };
   }
 
+  /**
+   * Wird ausgelöst, wenn das Formular abgeschickt wird.
+   */
   async _updateObject(event, formData) {
     const actorId = formData.actorId;
     const dc = Number(formData.dc) || 10;
 
-    const actor = game.actors.get(actorId);
-    if (!actor) {
-      ui.notifications.error("Lockpicking: Actor nicht gefunden.");
+    if (!actorId) {
+      ui.notifications.error("Lockpicking: Bitte einen Charakter auswählen.");
       return;
     }
 
-    // Startet den eigentlichen Ablauf
+    const actor = game.actors.get(actorId);
+    if (!actor) {
+      ui.notifications.error("Lockpicking: Actor nicht gefunden.");
+      console.error(`${MODULE_ID} | ActorId nicht gefunden:`, actorId);
+      return;
+    }
+
     await LockpickingMinigame.startForActor(actor, dc);
   }
 }
@@ -170,8 +194,7 @@ class LockpickingGameApp extends Application {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "lockpicking-game",
       title: "Schlossknacken",
-      template:
-        "modules/lockpicking-minigame/templates/lock-game.hbs",
+      template: `modules/${MODULE_ID}/templates/lock-game.hbs`,
       width: 500,
       height: "auto",
       popOut: true,
@@ -183,10 +206,7 @@ class LockpickingGameApp extends Application {
     // Sweetspot-Breite abhängig vom DC: je höher DC, desto kleiner der Bereich.
     const baseWidth = 40; // in %
     const minWidth = 10;
-    const difficultyFactor = Math.min(
-      1,
-      Math.max(0, (this.dc - 10) / 10)
-    );
+    const difficultyFactor = clamp((this.dc - 10) / 10, 0, 1);
     const sweetWidth = Math.round(
       baseWidth - difficultyFactor * (baseWidth - minWidth)
     );
@@ -288,11 +308,11 @@ class LockpickingGameApp extends Application {
 // --- Hooks / Namespace-Registrierung ---
 
 Hooks.once("init", () => {
-  console.log("lockpicking-minigame | init");
-  // Globaler Zugriff z.B. über game.lockpickingMinigame.openConfig()
+  console.log(`${MODULE_ID} | init`);
+  // Globaler Zugriff, z.B. im Macro: game.lockpickingMinigame.openConfig()
   game.lockpickingMinigame = LockpickingMinigame;
 });
 
 Hooks.once("ready", () => {
-  console.log("lockpicking-minigame | ready");
+  console.log(`${MODULE_ID} | ready`);
 });
