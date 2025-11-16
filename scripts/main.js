@@ -6,11 +6,20 @@
 
 const MODULE_ID = "lockpicking-minigame";
 
+// Kurz-Referenzen auf die Application-API
+const {
+  ApplicationV2,
+  HandlebarsApplicationMixin,
+  FormApplicationMixin
+} = foundry.applications.api;
+
 /* ------------------------------------ */
 /*  Konfig-Dialog (GM)                  */
 /* ------------------------------------ */
 
-class LockpickingConfigApp extends foundry.applications.api.ApplicationV2 {
+class LockpickingConfigApp extends FormApplicationMixin(
+  HandlebarsApplicationMixin(ApplicationV2)
+) {
   static DEFAULT_OPTIONS = {
     id: "lockpicking-config",
     title: "Schlossknacken",
@@ -65,7 +74,9 @@ class LockpickingConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     // passenden Spieler für den Actor finden
-    let targetUser = game.users.players.find(u => actor.testUserPermission(u, "OWNER"));
+    let targetUser = game.users.players.find(u =>
+      actor.testUserPermission(u, "OWNER")
+    );
     if (!targetUser) targetUser = game.user;
 
     const payload = {
@@ -79,7 +90,9 @@ class LockpickingConfigApp extends foundry.applications.api.ApplicationV2 {
     console.log(MODULE_ID, "| config submit payload:", payload);
 
     // einfache Chat-Nachricht für alle
-    const msg = `<b>Lockpicking</b>: ${actor.name} versucht ein Schloss zu knacken. (DC ${dc}, Bonus ${bonus >= 0 ? "+" + bonus : bonus})`;
+    const msg = `<b>Lockpicking</b>: ${actor.name} versucht ein Schloss zu knacken. (DC ${dc}, Bonus ${
+      bonus >= 0 ? "+" + bonus : bonus
+    })`;
     ChatMessage.create({ content: msg });
 
     // Socket-Ereignis an alle Clients schicken
@@ -91,7 +104,7 @@ class LockpickingConfigApp extends foundry.applications.api.ApplicationV2 {
 /*  Spiel-Dialog (Spieler)              */
 /* ------------------------------------ */
 
-class LockpickingGameApp extends foundry.applications.api.ApplicationV2 {
+class LockpickingGameApp extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(actor, dc, bonus, options = {}) {
     super(options);
     this.actor = actor;
@@ -139,7 +152,9 @@ class LockpickingGameApp extends foundry.applications.api.ApplicationV2 {
     if (startBtn) {
       startBtn.addEventListener("click", ev => {
         ev.preventDefault();
-        ui.notifications.info("Lockpicking: Hier kommt später das eigentliche Minispiel hin.");
+        ui.notifications.info(
+          "Lockpicking: Hier kommt später das eigentliche Minispiel hin."
+        );
       });
     }
 
@@ -161,16 +176,20 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
-  console.log(MODULE_ID, "| ready auf Client", game.user.id, "isGM:", game.user.isGM);
+  console.log(
+    MODULE_ID,
+    "| ready auf Client",
+    game.user.id,
+    "isGM:",
+    game.user.isGM
+  );
 
   // Socket-Listener auf JEDEM Client registrieren
   game.socket.on(`module.${MODULE_ID}`, data => {
     console.log(MODULE_ID, "| socket received auf", game.user.id, ":", data);
 
     if (!data || data.action !== "openGame") return;
-
-    // nur der adressierte User reagiert
-    if (data.userId !== game.user.id) return;
+    if (data.userId !== game.user.id) return; // nur adressierter User
 
     const actor = game.actors.get(data.actorId);
     if (!actor) {
@@ -189,5 +208,8 @@ Hooks.once("ready", () => {
     }
   };
 
-  console.log(MODULE_ID, "| API registriert: game.lockpickingMinigame.openConfig()");
+  console.log(
+    MODULE_ID,
+    "| API registriert: game.lockpickingMinigame.openConfig()"
+  );
 });
