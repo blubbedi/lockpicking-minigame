@@ -1,16 +1,15 @@
-<div class="lp-game">
-  <p><strong>{{actor.name}}</strong> versucht, ein Schloss zu knacken.</p>
-  <p>DC: <strong>{{dc}}</strong>, Bonus: <strong>{{#if (gte bonus 0)}}+{{/if}}{{bonus}}</strong></p>
+<div class="lockpicking-game">
+  <p><b>{{actorName}}</b> versucht ein Schloss zu knacken.</p>
+  <p>Schwierigkeit (DC): <b>{{dc}}</b>, Bonus: <b>{{bonus}}</b></p>
 
-  <div class="lp-bar-container">
-    <div class="lp-bar">
-      <div class="lp-bar-fill"></div>
-    </div>
-    <p>Starte die Bewegung und stoppe, wenn der Balken im unsichtbaren Zielbereich ist.</p>
+  <div class="form-group">
+    <button data-action="start" class="dialog-button">
+      Bewegung starten / Testknacken
+    </button>
+    <button data-action="close" class="dialog-button">
+      Schließen
+    </button>
   </div>
 
-  <div class="lp-buttons">
-    <button type="button" data-action="start">Bewegung starten</button>
-    <button type="button" data-action="stop">Jetzt knacken!</button>
-  </div>
+  <p class="hint">Sobald alles läuft, kannst du hier dein echtes Minispiel einbauen.</p>
 </div>
