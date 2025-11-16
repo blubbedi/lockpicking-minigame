@@ -236,7 +236,7 @@ class LockpickingGameApp extends Application {
     // Minigame-State
     this.running = false;
     this.finished = false;
-    this.position = 0.5; // Mittelpunkt des Balkens (0..1)
+    this.barPosition = 0.5; // Mittelpunkt des Balkens (0..1) – NICHT this.position!
     this.direction = 1;
     this.barSize = 0.25; // Anteil der Gesamtbreite (0..1)
     this.speed = 0.7;    // Einheiten pro Sekunde (0..1)
@@ -326,9 +326,9 @@ class LockpickingGameApp extends Application {
 
     const half = this.barSize / 2;
     // Sicherheits-Clamps
-    this.position = Math.min(1 - half, Math.max(half, this.position));
+    this.barPosition = Math.min(1 - half, Math.max(half, this.barPosition));
 
-    const leftPercent = (this.position - half) * 100;
+    const leftPercent = (this.barPosition - half) * 100;
     const widthPercent = this.barSize * 100;
 
     this._bar.style.width = `${widthPercent}%`;
@@ -362,14 +362,14 @@ class LockpickingGameApp extends Application {
     const half = this.barSize / 2;
 
     // Position fortschreiben
-    this.position += this.direction * this.speed * dt;
+    this.barPosition += this.direction * this.speed * dt;
 
     // an den Rändern umkehren
-    if (this.position - half <= 0) {
-      this.position = half;
+    if (this.barPosition - half <= 0) {
+      this.barPosition = half;
       this.direction = 1;
-    } else if (this.position + half >= 1) {
-      this.position = 1 - half;
+    } else if (this.barPosition + half >= 1) {
+      this.barPosition = 1 - half;
       this.direction = -1;
     }
 
@@ -409,7 +409,7 @@ class LockpickingGameApp extends Application {
     const { dc, bonus, disadvantage } = this.config;
 
     const center = 0.5;
-    const dist = Math.abs(this.position - center);
+    const dist = Math.abs(this.barPosition - center);
     const margin = this.barSize / 2;
 
     const success = dist <= margin;
