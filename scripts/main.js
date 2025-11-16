@@ -168,42 +168,28 @@ class LockpickingConfigApp extends FormApplication {
       const dexMod = getProp(actor, "system.abilities.dex.mod") ?? 0;
       const profBonus = getProp(actor, "system.attributes.prof") ?? 0;
 
-      // Proficiency robust auslesen (verschiedene System-Varianten)
-      let profRaw =
-        getProp(thievesTools, "system.proficient") ??
-        getProp(thievesTools, "system.proficiency");
+      // Vereinfachung:
+      // Wenn Diebeswerkzeug vorhanden ist, behandeln wir den Charakter als geübt.
+      // (Proficiencies über system.proficient sind zu inkonsistent zwischen Versionen.)
+      const proficientLevel = 1; // 1 = geübt
 
-      let proficientLevel = 0;
-
-      if (typeof profRaw === "number") {
-        proficientLevel = profRaw;              // 0,1,2,3 o.ä.
-      } else if (typeof profRaw === "boolean") {
-        proficientLevel = profRaw ? 1 : 0;      // true = geübt
-      } else if (typeof profRaw === "string" && profRaw !== "") {
-        const parsed = Number(profRaw);
-        if (!Number.isNaN(parsed)) proficientLevel = parsed;
-      }
-
-      // Bonus & Nachteil ableiten
       let bonus = dexMod;
-      let disadvantage = true;
+      let disadvantage = false; // Nachteil-Mechanik wird vorerst deaktiviert
 
-      // alles > 0 zählen wir als "geübt"
       if (proficientLevel > 0) {
         bonus = dexMod + profBonus;
         disadvantage = false;
       } else {
         bonus = dexMod;
-        disadvantage = true;
+        disadvantage = false; // auch hier: kein Nachteil mehr verwenden
       }
 
-      console.log("lockpicking-minigame | Proficiency-Check:", {
+      console.log("lockpicking-minigame | Proficiency-Check (vereinfacht):", {
         actor: actor.name,
         user: user.name,
         dc,
         dexMod,
         profBonus,
-        profRaw,
         proficientLevel,
         bonus,
         disadvantage
@@ -213,7 +199,7 @@ class LockpickingConfigApp extends FormApplication {
 
       const content =
         `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
-        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}).`;
+        `(DC ${dc}, Bonus ${bonus}).`;
 
       await ChatMessage.create({
         content,
@@ -251,7 +237,7 @@ class LockpickingGameApp extends Application {
     // Minigame-State
     this.running = false;
     this.finished = false;
-    this.barPosition = 0.5; // Mittelpunkt des Balkens (0..1) – NICHT this.position!
+    this.barPosition = 0.5; // Mittelpunkt des Balkens (0..1)
     this.direction = 1;
     this.barSize = 0.25; // Anteil der Gesamtbreite (0..1)
     this.speed = 0.7;    // Einheiten pro Sekunde (0..1)
@@ -307,7 +293,7 @@ class LockpickingGameApp extends Application {
 
   /** Berechnet Balken-Größe & Geschwindigkeit */
   _setupGameParameters() {
-    const { dc, bonus, disadvantage } = this.config;
+    const { dc, bonus } = this.config;
 
     // effektive Schwierigkeit: höher = schwieriger
     const diff = Math.max(0, dc - bonus);
@@ -316,20 +302,15 @@ class LockpickingGameApp extends Application {
     let size = 0.45 - diff * 0.02;
     size = Math.min(0.45, Math.max(0.1, size));
 
-    // bei Nachteil: halb so groß
-    if (disadvantage) size *= 0.5;
-
     this.barSize = size;
 
     // Grundgeschwindigkeit, bei diff höher etwas schneller
     let speed = 0.7 + diff * 0.02;
-    if (disadvantage) speed *= 1.3;
     this.speed = speed;
 
     console.log("lockpicking-minigame | Minigame-Parameter:", {
       dc,
       bonus,
-      disadvantage,
       barSize: this.barSize,
       speed: this.speed
     });
@@ -421,7 +402,7 @@ class LockpickingGameApp extends Application {
 
   /** Prüft, ob der Balken den Mittelpunkt trifft und schreibt Ergebnis in den Chat */
   async _evaluateResult() {
-    const { dc, bonus, disadvantage } = this.config;
+    const { dc, bonus } = this.config;
 
     const center = 0.5;
     const dist = Math.abs(this.barPosition - center);
@@ -440,7 +421,7 @@ class LockpickingGameApp extends Application {
 
     const flavor =
       `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
-      `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}.<br>` +
+      `DC ${dc}, Bonus ${bonus}.<br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>${quality}.`;
 
     await ChatMessage.create({
