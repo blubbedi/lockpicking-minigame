@@ -1,26 +1,16 @@
 <div class="lp-game">
-  <h2>{{actorName}} versucht das Schloss zu knacken</h2>
-  <p>Schwierigkeit (DC): <strong>{{dc}}</strong></p>
-  <p>Fingerfertigkeit-Bonus: <strong>+{{bonus}}</strong></p>
+  <p><strong>{{actor.name}}</strong> versucht, ein Schloss zu knacken.</p>
+  <p>DC: <strong>{{dc}}</strong>, Bonus: <strong>{{#if (gte bonus 0)}}+{{/if}}{{bonus}}</strong></p>
 
-  <div class="lp-bar-wrapper">
+  <div class="lp-bar-container">
     <div class="lp-bar">
-      <div
-        class="lp-zone"
-        data-sweet-width="{{sweetWidth}}"
-      ></div>
-      <div class="lp-marker"></div>
+      <div class="lp-bar-fill"></div>
     </div>
+    <p>Starte die Bewegung und stoppe, wenn der Balken im unsichtbaren Zielbereich ist.</p>
   </div>
 
-  <div class="lp-controls">
-    <button type="button" class="lp-start">Bewegung starten</button>
-    <button type="button" class="lp-try" disabled>Jetzt knacken!</button>
+  <div class="lp-buttons">
+    <button type="button" data-action="start">Bewegung starten</button>
+    <button type="button" data-action="stop">Jetzt knacken!</button>
   </div>
-
-  <p class="lp-status">
-    Klicke auf „Bewegung starten“ und versuche, im richtigen Moment auf
-    „Jetzt knacken!“ zu drücken, wenn die Markierung im hervorgehobenen Bereich
-    ist.
-  </p>
 </div>
