@@ -200,6 +200,16 @@ class LockpickingGameApp extends Application {
     super(options);
     this.actor = actor;
     this.config = config; // { dc, bonus, disadvantage, ... }
+
+    // Minigame-State
+    this.running = false;
+    this.finished = false;
+    this.position = 0.5; // Mittelpunkt des Balkens (0..1)
+    this.direction = 1;
+    this.barSize = 0.25; // Anteil der Gesamtbreite (0..1)
+    this.speed = 0.7;    // Einheiten pro Sekunde (0..1)
+    this._animFrame = null;
+    this._lastTime = null;
   }
 
   static get defaultOptions() {
@@ -223,49 +233,168 @@ class LockpickingGameApp extends Application {
     };
   }
 
+  /* ------------ Minigame-Setup & Animation ----------- */
+
   activateListeners(html) {
     super.activateListeners(html);
 
-    html.find('[data-action="start"]').on("click", this._onStart.bind(this));
+    this._html = html;
+    this._track = html.find(".lp-track")[0];
+    this._bar = html.find(".lp-bar")[0];
+    this._center = html.find(".lp-center")[0];
+    this._startButton = html.find('[data-action="start"]')[0];
+
+    // Größe & Geschwindigkeit auf Basis von DC / Bonus bestimmen
+    this._setupGameParameters();
+
+    // Anfangsposition zeichnen
+    this._renderBar();
+
+    html.find('[data-action="start"]').on("click", this._onStartClick.bind(this));
     html.find('[data-action="close"]').on("click", (ev) => {
       ev.preventDefault();
+      this._stopAnimation();
       this.close();
     });
   }
 
-  /**
-   * Aktuell: einfacher Wurf als Platzhalter.
-   * Später können wir hier den animierten Balken einbauen.
-   */
-  async _onStart(event) {
-    event.preventDefault();
-
+  /** Berechnet Balken-Größe & Geschwindigkeit */
+  _setupGameParameters() {
     const { dc, bonus, disadvantage } = this.config;
 
-    // 1 oder 2 Würfe je nach Nachteil
-    const roll1 = await new Roll(`1d20 + ${bonus}`).evaluate({ async: true });
-    let finalRoll = roll1;
-    let details = `Wurf: ${roll1.total}`;
+    // effektive Schwierigkeit: höher = schwieriger
+    const diff = Math.max(0, dc - bonus);
 
-    if (disadvantage) {
-      const roll2 = await new Roll(`1d20 + ${bonus}`).evaluate({ async: true });
-      finalRoll = roll1.total <= roll2.total ? roll1 : roll2;
-      details = `Würfe: ${roll1.total} und ${roll2.total} (Nachteil → niedrigeren genommen)`;
+    // Grundgröße: bei diff <= 5 etwa 45%, wird kleiner bis min ~10%
+    let size = 0.45 - diff * 0.02;
+    size = Math.min(0.45, Math.max(0.1, size));
+
+    // bei Nachteil: halb so groß
+    if (disadvantage) size *= 0.5;
+
+    this.barSize = size;
+
+    // Grundgeschwindigkeit, bei diff höher etwas schneller
+    let speed = 0.7 + diff * 0.02;
+    if (disadvantage) speed *= 1.3;
+    this.speed = speed;
+  }
+
+  /** Zeichnet Balken an aktueller Position */
+  _renderBar() {
+    if (!this._bar) return;
+
+    const half = this.barSize / 2;
+    // Sicherheits-Clamps
+    this.position = Math.min(1 - half, Math.max(half, this.position));
+
+    const leftPercent = (this.position - half) * 100;
+    const widthPercent = this.barSize * 100;
+
+    this._bar.style.width = `${widthPercent}%`;
+    this._bar.style.left = `${leftPercent}%`;
+  }
+
+  _startAnimation() {
+    if (this.running) return;
+    this.running = true;
+    this.finished = false;
+    this._lastTime = null;
+    this._animFrame = requestAnimationFrame(this._animate.bind(this));
+  }
+
+  _stopAnimation() {
+    this.running = false;
+    if (this._animFrame) cancelAnimationFrame(this._animFrame);
+    this._animFrame = null;
+    this._lastTime = null;
+  }
+
+  _animate(timestamp) {
+    if (!this.running) return;
+
+    if (this._lastTime === null) {
+      this._lastTime = timestamp;
+    }
+    const dt = (timestamp - this._lastTime) / 1000; // Sekunden
+    this._lastTime = timestamp;
+
+    const half = this.barSize / 2;
+
+    // Position fortschreiben
+    this.position += this.direction * this.speed * dt;
+
+    // an den Rändern umkehren
+    if (this.position - half <= 0) {
+      this.position = half;
+      this.direction = 1;
+    } else if (this.position + half >= 1) {
+      this.position = 1 - half;
+      this.direction = -1;
     }
 
-    const success = finalRoll.total >= dc;
+    this._renderBar();
+    this._animFrame = requestAnimationFrame(this._animate.bind(this));
+  }
 
-    await finalRoll.toMessage({
+  /* ------------ Button-Logik & Auswertung ----------- */
+
+  async _onStartClick(event) {
+    event.preventDefault();
+
+    if (!this.running && !this.finished) {
+      // 1. Klick → Bewegung starten
+      this._startAnimation();
+      if (this._startButton) {
+        this._startButton.textContent = "Jetzt knacken! (zum Stoppen klicken)";
+      }
+      return;
+    }
+
+    if (this.running && !this.finished) {
+      // 2. Klick → Bewegung stoppen & auswerten
+      this._stopAnimation();
+      this.finished = true;
+      if (this._startButton) {
+        this._startButton.textContent = "Ergebnis im Chat anzeigen";
+        this._startButton.disabled = true;
+      }
+      await this._evaluateResult();
+      return;
+    }
+  }
+
+  /** Prüft, ob der Balken den Mittelpunkt trifft und schreibt Ergebnis in den Chat */
+  async _evaluateResult() {
+    const { dc, bonus, disadvantage } = this.config;
+
+    const center = 0.5;
+    const dist = Math.abs(this.position - center);
+    const margin = this.barSize / 2;
+
+    const success = dist <= margin;
+
+    // kleine Qualitätsabstufung
+    let quality = "";
+    if (success) {
+      const rel = dist / margin; // 0 = perfekt Mitte, 1 = gerade so
+      if (rel <= 0.3) quality = " (perfekter Treffer)";
+      else if (rel <= 0.7) quality = " (guter Treffer)";
+      else quality = " (knapp geschafft)";
+    }
+
+    const flavor =
+      `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
+      `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}.<br>` +
+      `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>${quality}.`;
+
+    await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-      flavor:
-        `Lockpicking-Versuch gegen DC ${dc} ` +
-        `(${disadvantage ? "mit Nachteil" : "normal"}).<br>${details}`
+      content: flavor
     });
 
     ui.notifications[success ? "info" : "warn"](
-      success
-        ? "Du knackst das Schloss!"
-        : "Das Schloss widersteht deinem Versuch."
+      success ? "Du knackst das Schloss!" : "Das Schloss widersteht deinem Versuch."
     );
 
     this.close();
