@@ -1,197 +1,54 @@
-/* Styles für das Lockpicking Minigame */
+/* Grundlayout */
 
-.lockpicking-window {
-  padding: 8px;
-}
-/* Lockpicking Minigame – Grundstyle */
-
-.lp-config .form-group {
-  margin-bottom: 0.75rem;
+.lockpicking-config .form-group,
+.lockpicking-game .form-group {
+  margin-bottom: 8px;
 }
 
-.lp-config label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-}
+/* Minigame-Leiste */
 
-.lp-config .notes {
-  font-size: 0.85rem;
-  color: #ccc;
-}
-
-.lp-button-primary {
-  flex: 1;
-  padding: 6px 10px;
-  background: #444;
-  border: 1px solid #888;
-  border-radius: 4px;
-  color: #fff;
-  cursor: pointer;
-}
-
-.lp-button-primary:hover {
-  background: #666;
-}
-
-/* Minigame-Bar */
-
-.lp-game h2 {
-  margin-top: 0;
-}
-
-.lp-bar-wrapper {
-  margin: 10px 0;
-}
-
-.lp-bar {
+.lp-track {
   position: relative;
   width: 100%;
-  height: 24px;
-  background: #222;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #555;
-}
-
-.lp-zone {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  background: rgba(0, 200, 120, 0.4);
-}
-
-.lp-marker {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 100%;
-  background: #f5f5f5;
-}
-
-.lp-controls {
-  display: flex;
-  gap: 0.5rem;
-  margin: 8px 0;
-}
-
-.lp-controls button {
-  flex: 1;
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #777;
-  background: #333;
-  color: #fff;
-  cursor: pointer;
-}
-
-.lp-controls button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.lp-controls button:hover:not(:disabled) {
-  background: #555;
-}
-
-.lp-status {
-  font-size: 0.9rem;
-}
-/* Lockpicking Minigame – Grundstyle */
-
-.lp-config .form-group {
-  margin-bottom: 0.75rem;
-}
-
-.lp-config label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-}
-
-.lp-config .notes {
-  font-size: 0.85rem;
-  color: #ccc;
-}
-
-.lp-button-primary {
-  flex: 1;
-  padding: 6px 10px;
-  background: #444;
+  height: 32px;
+  margin: 10px 0 6px 0;
   border: 1px solid #888;
   border-radius: 4px;
-  color: #fff;
-  cursor: pointer;
-}
-
-.lp-button-primary:hover {
-  background: #666;
-}
-
-/* Minigame-Bar */
-
-.lp-game h2 {
-  margin-top: 0;
-}
-
-.lp-bar-wrapper {
-  margin: 10px 0;
-}
-
-.lp-bar {
-  position: relative;
-  width: 100%;
-  height: 24px;
   background: #222;
-  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #555;
 }
 
-.lp-zone {
+.lp-center-line {
   position: absolute;
+  left: 50%;
   top: 0;
+  width: 2px;
   height: 100%;
-  background: rgba(0, 200, 120, 0.4);
+  background: rgba(255, 255, 255, 0.4);
 }
 
-.lp-marker {
+.lp-target {
   position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 100%;
-  background: #f5f5f5;
+  left: 50%;
+  top: 2px;
+  height: 28px;
+  margin-left: -15%;
+  border-radius: 3px;
+  background: rgba(0, 200, 0, 0.4);
 }
 
-.lp-controls {
-  display: flex;
-  gap: 0.5rem;
-  margin: 8px 0;
+.lp-indicator {
+  position: absolute;
+  top: 2px;
+  width: 10%;
+  height: 28px;
+  border-radius: 3px;
+  background: rgba(200, 200, 0, 0.8);
 }
 
-.lp-controls button {
-  flex: 1;
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #777;
-  background: #333;
-  color: #fff;
-  cursor: pointer;
+/* Text */
+
+.lockpicking-game .hint {
+  font-size: 0.85rem;
+  opacity: 0.9;
 }
-
-.lp-controls button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.lp-controls button:hover:not(:disabled) {
-  background: #555;
-}
-
-.lp-status {
-  font-size: 0.9rem;
-}
-
-
