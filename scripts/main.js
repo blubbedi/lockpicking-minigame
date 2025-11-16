@@ -1,9 +1,34 @@
-
 // scripts/main.js
 
 // Kleiner Helper zum Clampen
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+/** Robust einen passenden Actor für einen User finden */
+function getActorForUser(user) {
+  if (!user) return null;
+
+  // 1) Assigned Character (offizielle Verknüpfung)
+  if (user.character) return user.character;
+
+  // 2) Aktuell kontrollierter Token des Users (falls vorhanden)
+  const controlled = canvas.tokens?.controlled ?? [];
+  const tokenForUser = controlled.find(t =>
+    t.actor &&
+    t.actor.testUserPermission(user, "OWNER")
+  );
+  if (tokenForUser?.actor) return tokenForUser.actor;
+
+  // 3) Erster Actor, den der User besitzt (Typ "character")
+  const ownedActor = game.actors.find(a =>
+    a.type === "character" &&
+    a.testUserPermission(user, "OWNER")
+  );
+  if (ownedActor) return ownedActor;
+
+  // 4) Nichts gefunden
+  return null;
 }
 
 /* ----------------------------------------- */
@@ -41,9 +66,10 @@ class LockpickingConfigApp extends FormApplication {
       return;
     }
 
-    const actor = user.character;
+    const actor = getActorForUser(user);
     if (!actor) {
-      ui.notifications.error("Dieser Spieler hat keinen verknüpften Charakter.");
+      ui.notifications.error("Dieser Spieler hat keinen verknüpften oder besessenen Charakter.");
+      console.warn("lockpicking-minigame | Konnte keinen Actor für User finden:", user);
       return;
     }
 
@@ -91,7 +117,6 @@ class LockpickingConfigApp extends FormApplication {
     await ChatMessage.create({
       content,
       speaker: { alias: "Lockpicking" },
-      // alle sollen sehen – wenn du nur GM+Spieler willst, nutze "whispers"
       flags: {
         "lockpicking-minigame": {
           action: "openGame",
@@ -238,7 +263,6 @@ Hooks.once("init", () => {
 Hooks.once("ready", () => {
   console.log("lockpicking-minigame | ready");
 
-  // Nur einmal anlegen
   game.lockpickingMinigame = {
     openConfig: () => {
       if (!game.user.isGM) {
@@ -252,24 +276,14 @@ Hooks.once("ready", () => {
 
 // Chat-Flag abfangen → beim richtigen Spieler das Minigame öffnen
 Hooks.on("createChatMessage", (message, options, userId) => {
-  const data = message.getFlag("lockpicking-minigame", "action")
-    ? {
-        action: message.getFlag("lockpicking-minigame", "action"),
-        userId: message.getFlag("lockpicking-minigame", "userId"),
-        actorId: message.getFlag("lockpicking-minigame", "actorId"),
-        dc: message.getFlag("lockpicking-minigame", "dc"),
-        bonus: message.getFlag("lockpicking-minigame", "bonus"),
-        disadvantage: message.getFlag("lockpicking-minigame", "disadvantage")
-      }
-    : message.flags["lockpicking-minigame"];
-
-  if (!data || data.action !== "openGame") return;
+  const flags = message.flags["lockpicking-minigame"];
+  if (!flags || flags.action !== "openGame") return;
 
   // Nur für den ausgewählten Spieler
-  if (game.user.id !== data.userId) return;
+  if (game.user.id !== flags.userId) return;
 
-  const actor = game.actors.get(data.actorId) || game.user.character;
+  const actor = game.actors.get(flags.actorId) || getActorForUser(game.user);
   if (!actor) return;
 
-  new LockpickingGameApp(actor, data).render(true);
+  new LockpickingGameApp(actor, flags).render(true);
 });
