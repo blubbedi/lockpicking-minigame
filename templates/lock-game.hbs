@@ -1,21 +1,27 @@
 <div class="lockpicking-game">
-  <p><b>{{actorName}}</b> versucht ein Schloss zu knacken.</p>
   <p>
-    Schwierigkeitsgrad (DC): <b>{{dc}}</b>,
-    Bonus: <b>{{bonus}}</b>
+    <b>{{actorName}}</b> versucht ein Schloss zu knacken.<br>
+    DC: <b>{{dc}}</b>, Bonus: <b>{{bonus}}</b>
     {{#if disadvantage}}(mit Nachteil){{else}}(normal){{/if}}
   </p>
 
+  <div class="lp-track-wrapper">
+    <div class="lp-track">
+      <div class="lp-center"></div>
+      <div class="lp-bar"></div>
+    </div>
+    <p class="lp-hint">
+      1. Klick: Bewegung starten – 2. Klick: Stoppen und Schlossknacken versuchen.
+      Triff die Mitte!
+    </p>
+  </div>
+
   <div class="form-group">
-    <button data-action="start" class="dialog-button">
-      Versuch starten
+    <button data-action="start" class="dialog-button default">
+      Bewegung starten
     </button>
     <button data-action="close" class="dialog-button">
       Schließen
     </button>
   </div>
-
-  <p class="hint">
-    Später können wir hier den bewegten Balken als richtiges Minispiel einbauen.
-  </p>
 </div>
