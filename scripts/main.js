@@ -21,6 +21,7 @@ Hooks.once("ready", () => {
         ui.notifications.warn("Nur der Spielleiter kann das Lockpicking-Konfigurationsfenster öffnen.");
         return;
       }
+      console.log("lockpicking-minigame | Öffne Konfig-Dialog");
       new LockpickingConfigApp().render(true);
     }
   };
@@ -38,6 +39,14 @@ Hooks.once("ready", () => {
       console.warn("lockpicking-minigame | Actor nicht gefunden:", data.actorId);
       return;
     }
+
+    console.log("lockpicking-minigame | Minigame wird für User geöffnet:", {
+      userId: data.userId,
+      actor: actor.name,
+      dc: data.dc,
+      bonus: data.bonus,
+      disadvantage: data.disadvantage
+    });
 
     new LockpickingGameApp(actor, data).render(true);
   });
@@ -104,90 +113,113 @@ class LockpickingConfigApp extends FormApplication {
 
   /** Formular-Submit */
   async _updateObject(event, formData) {
-    const selection = formData.selection;
-    const dc = Number(formData.dc) || 15;
+    console.log("lockpicking-minigame | _updateObject aufgerufen:", formData);
 
-    if (!selection) {
-      ui.notifications.error("Bitte einen Charakter auswählen.");
-      return;
-    }
+    try {
+      const selection = formData.selection;
+      const dc = Number(formData.dc) || 15;
 
-    const [actorId, userId] = selection.split("|");
-    const user = game.users.get(userId);
-    const actor = game.actors.get(actorId);
-
-    if (!user || !actor) {
-      ui.notifications.error("Ausgewählter Spieler oder Charakter wurde nicht gefunden.");
-      console.warn("lockpicking-minigame | Auswahl fehlerhaft:", {
-        selection,
-        user,
-        actor
-      });
-      return;
-    }
-
-    /* ----------------- Diebeswerkzeug prüfen ----------------- */
-
-    const thievesTools = actor.items.find((it) => {
-      const name = (it.name ?? "").toLowerCase();
-      const type = getProperty(it, "system.type.value") ?? "";
-      return (
-        it.type === "tool" &&
-        (
-          name.includes("diebes") ||      // „Diebeswerkzeug“
-          name.includes("thieves") ||     // „Thieves' Tools“
-          type === "thievesTools" ||
-          type === "thief"
-        )
-      );
-    });
-
-    if (!thievesTools) {
-      ui.notifications.warn(
-        `${actor.name} besitzt keine Diebeswerkzeuge – Schlossknacken nicht möglich.`
-      );
-      return;
-    }
-
-    // Grundwerte
-    const dexMod = getProperty(actor, "system.abilities.dex.mod") ?? 0;
-    const profBonus = getProperty(actor, "system.attributes.prof") ?? 0;
-    const proficient = getProperty(thievesTools, "system.proficient") ?? 0;
-
-    // dnd5e: 0 = keine, 1 = halb, 2 = prof., 3 = Expertise
-    let bonus = dexMod;
-    let disadvantage = true;
-
-    if (proficient >= 2) {
-      // geübt → Geschick + Übungsbonus, kein Nachteil
-      bonus = dexMod + profBonus;
-      disadvantage = false;
-    } else {
-      // ungeübt → nur Geschick, mit Nachteil
-      bonus = dexMod;
-      disadvantage = true;
-    }
-
-    /* ----------------- Chat-Nachricht + Flag ------------------ */
-
-    const content =
-      `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
-      `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}).`;
-
-    await ChatMessage.create({
-      content,
-      speaker: { alias: "Lockpicking" },
-      flags: {
-        "lockpicking-minigame": {
-          action: "openGame",
-          userId,
-          actorId,
-          dc,
-          bonus,
-          disadvantage
-        }
+      if (!selection) {
+        ui.notifications.error("Bitte einen Charakter auswählen.");
+        return;
       }
-    });
+
+      const [actorId, userId] = selection.split("|");
+      const user = game.users.get(userId);
+      const actor = game.actors.get(actorId);
+
+      if (!user || !actor) {
+        ui.notifications.error("Ausgewählter Spieler oder Charakter wurde nicht gefunden.");
+        console.warn("lockpicking-minigame | Auswahl fehlerhaft:", {
+          selection,
+          user,
+          actor
+        });
+        return;
+      }
+
+      /* ----------------- Diebeswerkzeug prüfen ----------------- */
+
+      const getProp = foundry.utils.getProperty;
+
+      const thievesTools = actor.items.find((it) => {
+        const name = (it.name ?? "").toLowerCase();
+        const typeValue = getProp(it, "system.type.value") ?? "";
+        return (
+          it.type === "tool" &&
+          (
+            name.includes("diebes") ||      // „Diebeswerkzeug“
+            name.includes("thieves") ||     // „Thieves' Tools“
+            typeValue === "thievesTools" ||
+            typeValue === "thief"
+          )
+        );
+      });
+
+      if (!thievesTools) {
+        ui.notifications.warn(
+          `${actor.name} besitzt keine Diebeswerkzeuge – Schlossknacken nicht möglich.`
+        );
+        console.log("lockpicking-minigame | Kein Diebeswerkzeug gefunden für", actor.name);
+        return;
+      }
+
+      // Grundwerte
+      const dexMod = getProp(actor, "system.abilities.dex.mod") ?? 0;
+      const profBonus = getProp(actor, "system.attributes.prof") ?? 0;
+      const proficient = getProp(thievesTools, "system.proficient") ?? 0;
+
+      // dnd5e: 0 = keine, 1 = halb, 2 = prof., 3 = Expertise
+      let bonus = dexMod;
+      let disadvantage = true;
+
+      if (proficient >= 2) {
+        // geübt → Geschick + Übungsbonus, kein Nachteil
+        bonus = dexMod + profBonus;
+        disadvantage = false;
+      } else {
+        // ungeübt → nur Geschick, mit Nachteil
+        bonus = dexMod;
+        disadvantage = true;
+      }
+
+      console.log("lockpicking-minigame | Werte für Lockpicking:", {
+        actor: actor.name,
+        user: user.name,
+        dc,
+        dexMod,
+        profBonus,
+        proficient,
+        bonus,
+        disadvantage
+      });
+
+      /* ----------------- Chat-Nachricht + Flag ------------------ */
+
+      const content =
+        `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
+        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}).`;
+
+      await ChatMessage.create({
+        content,
+        speaker: { alias: "Lockpicking" },
+        flags: {
+          "lockpicking-minigame": {
+            action: "openGame",
+            userId,
+            actorId,
+            dc,
+            bonus,
+            disadvantage
+          }
+        }
+      });
+
+      console.log("lockpicking-minigame | ChatMessage mit Flags erstellt.");
+    } catch (err) {
+      console.error("lockpicking-minigame | Fehler in _updateObject:", err);
+      ui.notifications.error("Beim Start des Lockpicking-Minispiels ist ein Fehler aufgetreten. Siehe Konsole.");
+    }
   }
 }
 
@@ -278,6 +310,14 @@ class LockpickingGameApp extends Application {
     let speed = 0.7 + diff * 0.02;
     if (disadvantage) speed *= 1.3;
     this.speed = speed;
+
+    console.log("lockpicking-minigame | Minigame-Parameter:", {
+      dc,
+      bonus,
+      disadvantage,
+      barSize: this.barSize,
+      speed: this.speed
+    });
   }
 
   /** Zeichnet Balken an aktueller Position */
