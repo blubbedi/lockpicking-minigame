@@ -1,17 +1,11 @@
 // scripts/main.js
 
-// Kleines Namenskürzel für Konsolen-Logs
 const MODULE_ID = "lockpicking-minigame";
 
 /* ---------------------------------------- */
-/*   Hilfsfunktionen                        */
+/*   Hilfsfunktion: passenden User finden   */
 /* ---------------------------------------- */
 
-/**
- * Finde den User, der den Actor kontrolliert.
- * - zuerst: aktiver Spieler mit OWNER-Rechten
- * - Fallback: ein GM
- */
 function findControllingUserId(actor) {
   // 1) aktiver Spieler mit Owner-Rechten
   for (const user of game.users.contents) {
@@ -45,17 +39,13 @@ class LockpickingConfigApp extends FormApplication {
     });
   }
 
-  /** Daten für das Template */
   getData(options = {}) {
-    // Alle Token-Actor, die von Spielern kontrolliert werden
+    // alle sichtbaren Token-Actor, unique
     const actors = canvas.tokens.placeables
       .map(t => t.actor)
       .filter(a => !!a)
-      .filter((a, i, arr) => arr.findIndex(x => x.id === a.id) === i) // unique
-      .map(a => ({
-        id: a.id,
-        name: a.name
-      }));
+      .filter((a, i, arr) => arr.findIndex(x => x.id === a.id) === i)
+      .map(a => ({ id: a.id, name: a.name }));
 
     const actorId = actors[0]?.id ?? null;
 
@@ -67,9 +57,7 @@ class LockpickingConfigApp extends FormApplication {
     };
   }
 
-  /** Form-Submit */
   async _updateObject(event, formData) {
-    // formData kommt als Objekt: { actorId, dc, bonus }
     const actorId = formData.actorId;
     const dc = Number(formData.dc) || 0;
     const bonus = Number(formData.bonus) || 0;
@@ -82,25 +70,21 @@ class LockpickingConfigApp extends FormApplication {
 
     const userId = findControllingUserId(actor);
 
-    console.log(
-      `${MODULE_ID} | config submit`,
-      { actorId, dc, bonus, userId }
-    );
+    const data = { actorId, dc, bonus, userId };
 
-    // Chat-Nachricht für alle
+    console.log(`${MODULE_ID} | config submit`, data);
+
     const content = `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet (DC ${dc}, Bonus ${bonus >= 0 ? "+" : ""}${bonus}).`;
+
+    // eine Chat-Nachricht für alle, aber mit versteckten Daten im Flag
     await ChatMessage.create({
       content,
-      speaker: ChatMessage.getSpeaker({ actor })
-    });
-
-    // Socket-Nachricht an den kontrollierenden Spieler
-    game.socket.emit(`module.${MODULE_ID}`, {
-      action: "openGame",
-      userId,
-      actorId,
-      dc,
-      bonus
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flags: {
+        [MODULE_ID]: {
+          gameData: data
+        }
+      }
     });
   }
 }
@@ -110,9 +94,9 @@ class LockpickingConfigApp extends FormApplication {
 /* ---------------------------------------- */
 
 class LockpickingGameApp extends Application {
-  constructor(data, options = {}) {
+  constructor(lpData, options = {}) {
     super(options);
-    this._lpData = data; // { actorId, dc, bonus }
+    this._lpData = lpData;  // { actorId, dc, bonus, userId }
   }
 
   static get defaultOptions() {
@@ -159,9 +143,9 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
-  console.log(`${MODULE_ID} | ready on user`, game.user.id);
+  console.log(`${MODULE_ID} | ready auf User`, game.user.id);
 
-  // API für Makros & andere Module
+  // API für Makros
   game.lockpickingMinigame = {
     openConfig() {
       if (!game.user.isGM) {
@@ -171,12 +155,19 @@ Hooks.once("ready", () => {
     }
   };
 
-  // Socket-Listener: nur der gemeinte User reagiert
-  game.socket.on(`module.${MODULE_ID}`, data => {
-    if (!data || data.action !== "openGame") return;
-    if (data.userId !== game.user.id) return;
+  // Sobald eine Chat-Nachricht gerendert wird, prüfen wir auf unser Flag
+  Hooks.on("renderChatMessage", (message, html, data) => {
+    const gameData = message.getFlag(MODULE_ID, "gameData");
+    if (!gameData) return;
 
-    console.log(`${MODULE_ID} | socket received on`, game.user.id, data);
-    new LockpickingGameApp(data).render(true);
+    console.log(`${MODULE_ID} | renderChatMessage`, {
+      currentUser: game.user.id,
+      gameData
+    });
+
+    // Nur der adressierte Spieler (userId) öffnet das Fenster
+    if (gameData.userId !== game.user.id) return;
+
+    new LockpickingGameApp(gameData).render(true);
   });
 });
