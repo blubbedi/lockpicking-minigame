@@ -1,87 +1,98 @@
-// modules/lockpicking-minigame/scripts/main.js
+// scripts/main.js
+// ----------------------------------------------------
+// Einfaches Lockpicking-Minispiel-Grundgerüst
+// Modul-ID muss: "lockpicking-minigame" sein
+// ----------------------------------------------------
 
 const MODULE_ID = "lockpicking-minigame";
 
-/* ----------------------------------------- */
-/*  Lockpicking-Konfig-Dialog (GM-Seite)    */
-/* ----------------------------------------- */
+/* ------------------------------------ */
+/*  Konfig-Dialog (GM)                  */
+/* ------------------------------------ */
 
-class LockpickingConfigApp extends FormApplication {
-  static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
-      id: "lockpicking-config",
-      title: "Schlossknacken",
-      template: `modules/${MODULE_ID}/templates/lock-config.hbs`,
-      width: 400,
+class LockpickingConfigApp extends ApplicationV2 {
+  static DEFAULT_OPTIONS = {
+    id: "lockpicking-config",
+    title: "Schlossknacken",
+    width: 420,
+    height: "auto",
+    window: {
+      resizable: true
+    },
+    classes: ["lockpicking-minigame", "lockpicking-config"],
+    position: {
+      left: 120,
+      top: 120
+    },
+    form: {
+      handler: LockpickingConfigApp.#handleSubmit,
+      submitOnChange: false,
       closeOnSubmit: true
-    });
-  }
+    }
+  };
+
+  static PARTS = {
+    form: {
+      template: `modules/${MODULE_ID}/templates/lock-config.hbs`
+    }
+  };
 
   /** Daten für das Template */
-  getData(options = {}) {
-    // Alle Akteure, die einem Spieler gehören
+  async _prepareContext(_options) {
+    // Alle Actoren, die von Spielern kontrolliert werden
     const actors = game.actors.contents.filter(a => a.hasPlayerOwner);
 
     return {
-      actors,
-      actorId: this.actorId ?? actors[0]?.id ?? "",
-      dc: this.dc ?? 15,
-      bonus: this.bonus ?? 0
+      actors: actors.map(a => ({ id: a.id, name: a.name })),
+      actorId: actors[0]?.id ?? "",
+      dc: 15,
+      bonus: 0
     };
   }
 
-  /** Wird aufgerufen, wenn der GM auf "Lockpicking starten" klickt */
-  async _updateObject(event, formData) {
+  /** Submit-Handler des Formulars */
+  static async #handleSubmit(event, form, formData) {
     event.preventDefault();
 
     const actorId = formData.actorId;
-    const dc = Number(formData.dc) || 0;
+    const dc = Number(formData.dc) || 10;
     const bonus = Number(formData.bonus) || 0;
-
     const actor = game.actors.get(actorId);
+
     if (!actor) {
-      ui.notifications.error("Lockpicking: Gewählter Charakter wurde nicht gefunden.");
-      console.warn(`${MODULE_ID} | Actor not found`, { actorId, formData });
+      ui.notifications.error("Lockpicking: Actor nicht gefunden.");
       return;
     }
 
-    // Versuchen, den zugehörigen Spieler zu finden
-    const playerUser =
-      game.users.players.find(u => u.character?.id === actorId) ??
-      game.users.find(u => u.isGM && u.active); // Fallback: ein aktiver GM
-
-    if (!playerUser) {
-      ui.notifications.warn("Lockpicking: Kein Spieler für diesen Charakter gefunden.");
-      console.warn(`${MODULE_ID} | No player user for actor`, { actorId, actor });
-      return;
-    }
+    // passenden Spieler für den Actor finden
+    // – erster Owner-Spieler, ansonsten aktueller User als Fallback
+    let targetUser = game.users.players.find(u => actor.testUserPermission(u, "OWNER"));
+    if (!targetUser) targetUser = game.user;
 
     const payload = {
       action: "openGame",
-      userId: playerUser.id,
       actorId,
       dc,
-      bonus
+      bonus,
+      userId: targetUser.id
     };
 
-    console.log(`${MODULE_ID} | Config submit`, payload);
+    console.log(MODULE_ID, "| config submit payload:", payload);
 
-    // Nachricht in den Chat für alle
-    ChatMessage.create({
-      speaker: { alias: "Lockpicking" },
-      content: `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet (DC ${dc}, Bonus ${bonus}).`
-    });
+    // einfache Chat-Nachricht für alle
+    const msg = `<b>Lockpicking</b>: ${actor.name} versucht ein Schloss zu knacken. (DC ${dc}, Bonus ${bonus >= 0 ? "+" + bonus : bonus})`;
+    ChatMessage.create({ content: msg });
 
-    // Socket an alle Clients schicken
+    // Socket-Ereignis an alle Clients schicken
     game.socket.emit(`module.${MODULE_ID}`, payload);
   }
 }
 
-/* ----------------------------------------- */
-/*  Lockpicking-Spiel-Dialog (Spieler)      */
-/* ----------------------------------------- */
+/* ------------------------------------ */
+/*  Spiel-Dialog (Spieler)              */
+/* ------------------------------------ */
 
-class LockpickingGameApp extends Application {
+class LockpickingGameApp extends ApplicationV2 {
   constructor(actor, dc, bonus, options = {}) {
     super(options);
     this.actor = actor;
@@ -89,18 +100,28 @@ class LockpickingGameApp extends Application {
     this.bonus = bonus;
   }
 
-  static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
-      id: "lockpicking-game",
-      title: "Lockpicking",
-      template: `modules/${MODULE_ID}/templates/lock-game.hbs`,
-      width: 400,
-      height: "auto"
-    });
-  }
+  static DEFAULT_OPTIONS = {
+    id: "lockpicking-game",
+    title: "Lockpicking",
+    width: 420,
+    height: "auto",
+    window: {
+      resizable: true
+    },
+    classes: ["lockpicking-minigame", "lockpicking-game"],
+    position: {
+      left: 160,
+      top: 160
+    }
+  };
 
-  /** Daten für das Template */
-  getData(options = {}) {
+  static PARTS = {
+    content: {
+      template: `modules/${MODULE_ID}/templates/lock-game.hbs`
+    }
+  };
+
+  async _prepareContext(_options) {
     return {
       actorName: this.actor?.name ?? "Unbekannt",
       dc: this.dc,
@@ -108,104 +129,67 @@ class LockpickingGameApp extends Application {
     };
   }
 
-  /** Listener für Buttons im Template */
+  /** Buttons im Spiel-Dialog */
   activateListeners(html) {
     super.activateListeners(html);
+    const root = html[0] ?? html; // ApplicationV2 gibt ein jQuery-ähnliches Objekt
 
-    html.find("button[data-action='start']").on("click", this._onStart.bind(this));
-    html.find("button[data-action='close']").on("click", () => this.close());
-  }
+    const startBtn = root.querySelector('[data-action="start"]');
+    const closeBtn = root.querySelector('[data-action="close"]');
 
-  /** Platzhalter für das eigentliche Minispiel */
-  async _onStart(event) {
-    event.preventDefault();
+    if (startBtn) {
+      startBtn.addEventListener("click", ev => {
+        ev.preventDefault();
+        ui.notifications.info("Lockpicking: Hier kommt später das eigentliche Minispiel hin.");
+        // hier kannst du später die echte Logik einbauen
+      });
+    }
 
-    const msg = `${this.actor.name} versucht das Schloss zu knacken! (DC ${this.dc}, Bonus ${this.bonus})`;
-    ui.notifications.info(msg);
-
-    // Einfache Chat-Nachricht, damit GM & Spieler was sehen
-    ChatMessage.create({
-      speaker: { actor: this.actor },
-      content: msg
-    });
-
-    // Hier später dein echtes Minispiel einbauen
-    // z.B. eigenes Canvas, Progressbar, Würfelwurf etc.
-
-    this.close();
+    if (closeBtn) {
+      closeBtn.addEventListener("click", ev => {
+        ev.preventDefault();
+        this.close();
+      });
+    }
   }
 }
 
-/* ----------------------------------------- */
-/*  Socket-Handler                           */
-/* ----------------------------------------- */
-
-function handleSocketMessage(data) {
-  if (!data || typeof data !== "object") return;
-  if (data.action !== "openGame") return;
-
-  console.log(`${MODULE_ID} | Socket-Nachricht empfangen`, data);
-
-  // Nur der adressierte User reagiert
-  if (game.user.id !== data.userId) return;
-
-  const actor = game.actors.get(data.actorId);
-  if (!actor) {
-    console.warn(`${MODULE_ID} | Actor not found on client`, data.actorId);
-    ui.notifications.warn("Lockpicking: Der Charakter für dieses Minispiel wurde nicht gefunden.");
-    return;
-  }
-
-  const app = new LockpickingGameApp(actor, data.dc, data.bonus);
-  app.render(true);
-}
-
-/* ----------------------------------------- */
-/*  Hooks                                   */
-/* ----------------------------------------- */
+/* ------------------------------------ */
+/*  Hooks                               */
+/* ------------------------------------ */
 
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | init`);
+  console.log(MODULE_ID, "| init");
 });
 
 Hooks.once("ready", () => {
-  console.log(`${MODULE_ID} | ready, current user:`, game.user?.id);
+  console.log(MODULE_ID, "| ready auf Client", game.user.id, "isGM:", game.user.isGM);
 
-  // Socket registrieren
-  game.socket.on(`module.${MODULE_ID}`, handleSocketMessage);
+  // Socket-Listener auf JEDEM Client registrieren
+  game.socket.on(`module.${MODULE_ID}`, data => {
+    console.log(MODULE_ID, "| socket received auf", game.user.id, ":", data);
 
-  // Globales API-Objekt, damit du Makros schreiben kannst
+    if (!data || data.action !== "openGame") return;
+
+    // nur der adressierte User reagiert
+    if (data.userId !== game.user.id) return;
+
+    const actor = game.actors.get(data.actorId);
+    if (!actor) {
+      ui.notifications.error("Lockpicking: Actor für Minispiel nicht gefunden.");
+      return;
+    }
+
+    const app = new LockpickingGameApp(actor, data.dc, data.bonus);
+    app.render(true);
+  });
+
+  // Globale API für Makros usw.
   game.lockpickingMinigame = {
     openConfig: () => {
-      if (!game.user.isGM) {
-        ui.notifications.warn("Nur der GM kann das Lockpicking-Minispiel starten.");
-        return;
-      }
       new LockpickingConfigApp().render(true);
-    },
-
-    // Kleiner Test, um zu prüfen, ob das Modul geladen ist
-    ping: () => {
-      ui.notifications.info("Lockpicking-Minispiel ist geladen.");
-      console.log(`${MODULE_ID} | ping von`, game.user?.id);
-    },
-
-    // Socket-Testfunktion (optional)
-    sendTest: () => {
-      const payload = {
-        action: "openGame",
-        userId: game.user.id,
-        actorId: game.actors.contents[0]?.id ?? null,
-        dc: 10,
-        bonus: 0
-      };
-      console.log(`${MODULE_ID} | sendTest`, payload);
-      game.socket.emit(`module.${MODULE_ID}`, payload);
     }
   };
 
-  // Optional: globale Hilfsfunktion für Makros im Browser-Fenster
-  window.openLockpickingConfig = () => game.lockpickingMinigame.openConfig();
-
-  console.log(`${MODULE_ID} | Socket registriert für`, `module.${MODULE_ID}`);
+  console.log(MODULE_ID, "| API registriert: game.lockpickingMinigame.openConfig()");
 });
