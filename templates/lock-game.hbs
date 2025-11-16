@@ -1,11 +1,22 @@
-<div>
+<div class="lockpicking-game">
   <p><b>{{actorName}}</b> versucht ein Schloss zu knacken.</p>
-  <p>DC: <b>{{dc}}</b>, Bonus: <b>{{bonus}}</b></p>
+  <p>
+    Schwierigkeit (DC): <b>{{dc}}</b>,
+    Bonus: <b>{{bonus}}</b>
+    {{#if disadvantage}} – <span style="color:#c00;">mit Nachteil</span>{{/if}}
+  </p>
 
-  <div class="form-group">
-    <button data-action="start" class="dialog-button">Bewegung starten</button>
-    <button data-action="close" class="dialog-button">Schließen</button>
+  <div class="lp-track">
+    <div class="lp-center-line"></div>
+    <div class="lp-target" style="width: {{targetSize}}%;"></div>
+    <div class="lp-indicator"></div>
   </div>
 
-  <p class="hint">Minispiel kann später ergänzt werden.</p>
+  <p class="hint">Klicke, wenn der bewegliche Balken den Zielbereich überdeckt.</p>
+
+  <div class="form-group">
+    <button type="button" data-action="attempt" class="dialog-button default">
+      Versuch starten
+    </button>
+  </div>
 </div>
