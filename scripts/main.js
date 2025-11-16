@@ -10,7 +10,7 @@ const MODULE_ID = "lockpicking-minigame";
 /*  Konfig-Dialog (GM)                  */
 /* ------------------------------------ */
 
-class LockpickingConfigApp extends ApplicationV2 {
+class LockpickingConfigApp extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
     id: "lockpicking-config",
     title: "Schlossknacken",
@@ -65,7 +65,6 @@ class LockpickingConfigApp extends ApplicationV2 {
     }
 
     // passenden Spieler für den Actor finden
-    // – erster Owner-Spieler, ansonsten aktueller User als Fallback
     let targetUser = game.users.players.find(u => actor.testUserPermission(u, "OWNER"));
     if (!targetUser) targetUser = game.user;
 
@@ -92,7 +91,7 @@ class LockpickingConfigApp extends ApplicationV2 {
 /*  Spiel-Dialog (Spieler)              */
 /* ------------------------------------ */
 
-class LockpickingGameApp extends ApplicationV2 {
+class LockpickingGameApp extends foundry.applications.api.ApplicationV2 {
   constructor(actor, dc, bonus, options = {}) {
     super(options);
     this.actor = actor;
@@ -132,7 +131,7 @@ class LockpickingGameApp extends ApplicationV2 {
   /** Buttons im Spiel-Dialog */
   activateListeners(html) {
     super.activateListeners(html);
-    const root = html[0] ?? html; // ApplicationV2 gibt ein jQuery-ähnliches Objekt
+    const root = html[0] ?? html;
 
     const startBtn = root.querySelector('[data-action="start"]');
     const closeBtn = root.querySelector('[data-action="close"]');
@@ -141,7 +140,6 @@ class LockpickingGameApp extends ApplicationV2 {
       startBtn.addEventListener("click", ev => {
         ev.preventDefault();
         ui.notifications.info("Lockpicking: Hier kommt später das eigentliche Minispiel hin.");
-        // hier kannst du später die echte Logik einbauen
       });
     }
 
@@ -184,7 +182,7 @@ Hooks.once("ready", () => {
     app.render(true);
   });
 
-  // Globale API für Makros usw.
+  // Globale API für Makros
   game.lockpickingMinigame = {
     openConfig: () => {
       new LockpickingConfigApp().render(true);
