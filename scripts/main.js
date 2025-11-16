@@ -1,25 +1,19 @@
 // scripts/main.js
 // ----------------------------------------------------
 // Einfaches Lockpicking-Minispiel-Grundgerüst
-// Modul-ID muss: "lockpicking-minigame" sein
+// Modul-ID: "lockpicking-minigame"
 // ----------------------------------------------------
 
 const MODULE_ID = "lockpicking-minigame";
 
-// Kurz-Referenzen auf die Application-API
-const {
-  ApplicationV2,
-  HandlebarsApplicationMixin,
-  FormApplicationMixin
-} = foundry.applications.api;
+// Kurz-Referenzen auf die Application-API (Foundry V11)
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /* ------------------------------------ */
 /*  Konfig-Dialog (GM)                  */
 /* ------------------------------------ */
 
-class LockpickingConfigApp extends FormApplicationMixin(
-  HandlebarsApplicationMixin(ApplicationV2)
-) {
+class LockpickingConfigApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "lockpicking-config",
     title: "Schlossknacken",
@@ -32,16 +26,11 @@ class LockpickingConfigApp extends FormApplicationMixin(
     position: {
       left: 120,
       top: 120
-    },
-    form: {
-      handler: LockpickingConfigApp.#handleSubmit,
-      submitOnChange: false,
-      closeOnSubmit: true
     }
   };
 
   static PARTS = {
-    form: {
+    content: {
       template: `modules/${MODULE_ID}/templates/lock-config.hbs`
     }
   };
@@ -59,13 +48,34 @@ class LockpickingConfigApp extends FormApplicationMixin(
     };
   }
 
-  /** Submit-Handler des Formulars */
-  static async #handleSubmit(event, form, formData) {
+  /** Listener für Submit-Button etc. */
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    const root = html[0] ?? html;
+
+    // Foundry packt den Inhalt in ein <form> – das suchen wir
+    const form =
+      root.closest("form") || root.querySelector("form") || root.parentElement;
+
+    if (form) {
+      form.addEventListener("submit", this._onSubmit.bind(this));
+    } else {
+      console.warn(MODULE_ID, "| Kein Formular im Config-Dialog gefunden.");
+    }
+  }
+
+  /** Formular-Submit: Lockpicking starten */
+  async _onSubmit(event) {
     event.preventDefault();
 
-    const actorId = formData.actorId;
-    const dc = Number(formData.dc) || 10;
-    const bonus = Number(formData.bonus) || 0;
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    const actorId = formData.get("actorId");
+    const dc = Number(formData.get("dc")) || 10;
+    const bonus = Number(formData.get("bonus")) || 0;
+
     const actor = game.actors.get(actorId);
 
     if (!actor) {
@@ -97,6 +107,9 @@ class LockpickingConfigApp extends FormApplicationMixin(
 
     // Socket-Ereignis an alle Clients schicken
     game.socket.emit(`module.${MODULE_ID}`, payload);
+
+    // Dialog schließen
+    this.close();
   }
 }
 
