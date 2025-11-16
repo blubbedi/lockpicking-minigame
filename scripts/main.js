@@ -1,124 +1,20 @@
-console.log("Lockpicking | Modul geladen");
+const MODULE_ID = "lockpicking-minigame";
 
-/* ============================================
- * SOCKET REGISTRIEREN
- * ============================================ */
-let lockpickingSocket;
+console.log(`${MODULE_ID} | main.js geladen (globaler Kontext)`);
 
-Hooks.once("socketlib.ready", () => {
-  lockpickingSocket = socketlib.registerModule("lockpicking-minigame");
-
-  // Spieler empfängt Spielstart
-  lockpickingSocket.register("openGame", (data) => {
-    console.log("Lockpicking | Spieler empfängt Spielstart:", data);
-    ui.notifications.info("Ein Lockpicking-Minispiel wurde gestartet.");
-    new LockpickingGameApp(data).render(true);
-  });
+Hooks.once("init", () => {
+  console.log(`${MODULE_ID} | init hook auf User=${game.user.id}, isGM=${game.user.isGM}`);
 });
 
-/* ============================================
- * GM CONFIG DIALOG
- * ============================================ */
-class LockpickingConfigApp extends Application {
-  static get defaultOptions() {
-    return {
-      id: "lockpicking-config",
-      title: "Schlossknacken",
-      template: "modules/lockpicking-minigame/templates/lock-config.hbs",
-      width: 400,
-      height: "auto",
-    };
-  }
+Hooks.once("ready", () => {
+  console.log(`${MODULE_ID} | ready hook auf User=${game.user.id}, isGM=${game.user.isGM}`);
 
-  getData() {
-    return {
-      actors: game.actors.contents,
-      actorId: this.actorId ?? "",
-      dc: this.dc ?? 15,
-      bonus: this.bonus ?? 0
-    };
-  }
+  // Einfaches Test-API im game-Namespace
+  game.lockpickingTest = {
+    ping() {
+      ui.notifications.info(`LockpickingTest.ping() auf User=${game.user.id}`);
+    }
+  };
 
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    html.find("form").on("submit", (ev) => {
-      ev.preventDefault();
-
-      const fd = new FormData(ev.target);
-      const actorId = fd.get("actorId");
-      const dc = Number(fd.get("dc"));
-      const bonus = Number(fd.get("bonus"));
-
-      const actor = game.actors.get(actorId);
-      if (!actor) return ui.notifications.error("Ungültiger Actor!");
-
-      console.log("Lockpicking | GM startet Minispiel für:", actorId);
-
-      // Socket an Spieler senden
-      lockpickingSocket.executeForPlayer(
-        actor?.permission?.default ?? 0,
-        "openGame",
-        {
-          actorId,
-          actorName: actor.name,
-          dc,
-          bonus,
-          userId: actor.ownership.default
-        }
-      );
-
-      // Zusätzlich Chatnachricht
-      ChatMessage.create({
-        content: `🔐 Lockpicking-Minispiel für <b>${actor.name}</b> gestartet. (DC ${dc}, Bonus ${bonus})`
-      });
-
-      this.close();
-    });
-  }
-}
-
-/* ============================================
- * SPIELER-DIALOG
- * ============================================ */
-class LockpickingGameApp extends Application {
-  constructor(data) {
-    super();
-    this.data = data;
-  }
-
-  static get defaultOptions() {
-    return {
-      id: "lockpicking-game",
-      title: "Lockpicking",
-      template: "modules/lockpicking-minigame/templates/lock-game.hbs",
-      width: 400,
-      height: "auto"
-    };
-  }
-
-  getData() {
-    return this.data;
-  }
-
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    html.find("[data-action=start]").click(() => {
-      ui.notifications.info("Bewegung starten / Testknacken (noch Dummy)");
-    });
-
-    html.find("[data-action=close]").click(() => {
-      this.close();
-    });
-  }
-}
-
-/* ============================================
- * MAKRO-FUNKTION
- * ============================================ */
-game.lockpicking = {
-  openConfig: () => {
-    new LockpickingConfigApp().render(true);
-  }
-};
+  console.log(`${MODULE_ID} | game.lockpickingTest gesetzt:`, typeof game.lockpickingTest);
+});
