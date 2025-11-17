@@ -418,8 +418,8 @@ class LockpickingGameApp extends Application {
     const diff = Math.max(0, dc - bonus);
 
     // Grundgröße: bei diff <= 5 etwa 45%, wird kleiner bis min ~10%
-    let size = 0.45 - diff * 0.02;
-    size = Math.min(0.45, Math.max(0.1, size));
+    let size = 0.7 - diff * 0.04;
+    size = Math.max(0.10, Math.min(0.70, size));
 
     // bei Nachteil: halb so groß
     if (disadvantage) size *= 0.5;
@@ -427,7 +427,7 @@ class LockpickingGameApp extends Application {
     this.barSize = size;
 
     // Grundgeschwindigkeit, bei diff höher etwas schneller
-    let speed = 0.7 + diff * 0.02;
+    let speed = 0.6 + diff * 0.05;
     if (disadvantage) speed *= 1.3;
     this.speed = speed;
 
