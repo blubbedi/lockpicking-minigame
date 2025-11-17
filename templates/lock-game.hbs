@@ -1,27 +1,51 @@
-<div class="lockpicking-game">
-  <p>
-    <b>{{actorName}}</b> versucht ein Schloss zu knacken.<br>
-    DC: <b>{{dc}}</b>, Bonus: <b>{{bonus}}</b>
-    {{#if disadvantage}}(mit Nachteil){{else}}(normal){{/if}}
-  </p>
+<section class="lp-header">
+  <div class="lp-icon">
+    <i class="fa-solid fa-lock"></i>
+  </div>
+  <div class="lp-title-block">
+    <h2>Schlossknacken</h2>
+    <p>
+      <strong>{{actorName}}</strong> versucht ein Schloss zu knacken.<br>
+      DC: <span class="lp-tag lp-tag-dc">{{dc}}</span>
+      Bonus: <span class="lp-tag lp-tag-bonus">{{bonus}}</span>
+      {{#if disadvantage}}
+        <span class="lp-tag lp-tag-disadv">mit Nachteil</span>
+      {{else}}
+        <span class="lp-tag lp-tag-adv">ohne Nachteil</span>
+      {{/if}}
+    </p>
+  </div>
+</section>
+
+<section class="lp-body">
+  <div class="lp-instructions">
+    <ol>
+      <li>Klicke <b>Start</b>, um den Schieber in Bewegung zu setzen.</li>
+      <li>Versuche, den <b>hellen Bereich</b> genau über dem <b>Mittelpunkt</b> zu stoppen.</li>
+      <li>Je höher dein Bonus, desto breiter ist der Trefferbereich.</li>
+      <li>Bei Nachteil ist der Bereich kleiner und bewegt sich schneller.</li>
+    </ol>
+  </div>
 
   <div class="lp-track-wrapper">
     <div class="lp-track">
+      <div class="lp-track-bg"></div>
       <div class="lp-center"></div>
       <div class="lp-bar"></div>
     </div>
-    <p class="lp-hint">
-      1. Klick: Bewegung starten – 2. Klick: Stoppen und Schlossknacken versuchen.
-      Triff die Mitte!
-    </p>
+    <div class="lp-track-legend">
+      <span class="lp-legend-left">Fehlschlag</span>
+      <span class="lp-legend-center">Trefferzone</span>
+      <span class="lp-legend-right">Fehlschlag</span>
+    </div>
   </div>
+</section>
 
-  <div class="form-group">
-    <button data-action="start" class="dialog-button default">
-      Bewegung starten
-    </button>
-    <button data-action="close" class="dialog-button">
-      Schließen
-    </button>
-  </div>
-</div>
+<footer class="lp-footer">
+  <button type="button" class="lp-btn lp-btn-primary" data-action="start">
+    Start
+  </button>
+  <button type="button" class="lp-btn lp-btn-ghost" data-action="close">
+    Abbrechen
+  </button>
+</footer>
