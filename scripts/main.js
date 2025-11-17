@@ -1,6 +1,6 @@
 /**
  * Lockpicking Minigame - main.js
- * Foundry VTT v11, dnd5e
+ * Foundry VTT v11, dnd5e 4.x
  */
 
 /* ----------------------------------------- */
@@ -51,6 +51,136 @@ Hooks.once("ready", () => {
     new LockpickingGameApp(actor, data).render(true);
   });
 });
+
+/* ----------------------------------------- */
+/*  Hilfsfunktionen                          */
+/* ----------------------------------------- */
+
+/**
+ * Versucht, Tool-Proficiency für Diebeswerkzeuge zu finden.
+ * 1) bevorzugt actor.system.tools
+ * 2) Fallback: Tool-Item suchen
+ *
+ * Rückgabe:
+ * {
+ *   hasTools: boolean,
+ *   profMultiplier: number,   // 0, 0.5, 1, 2
+ *   source: "actor.tools" | "item" | "none",
+ *   debug: { ... }
+ * }
+ */
+function getThievesToolsProficiency(actor) {
+  const getProp = foundry.utils.getProperty;
+  const debug = {};
+
+  /* ---------- 1) actor.system.tools ---------- */
+
+  const toolsStruct = getProp(actor, "system.tools") ?? {};
+  debug.actorSystemTools = toolsStruct;
+
+  let bestEntry = null;
+  let bestKey = null;
+
+  for (const [key, data] of Object.entries(toolsStruct)) {
+    if (!data) continue;
+    const label = (data.label ?? data.name ?? "").toString().toLowerCase();
+    const k = key.toLowerCase();
+
+    const isThiefTool =
+      k.includes("thief") ||
+      k.includes("thieves") ||
+      label.includes("thieves") ||
+      label.includes("diebes");
+
+    if (!isThiefTool) continue;
+
+    bestEntry = data;
+    bestKey = key;
+    break;
+  }
+
+  if (bestEntry) {
+    let val = bestEntry.value;
+    if (typeof val === "string") val = Number(val) || 0;
+    if (typeof val !== "number") val = 0;
+
+    // Doku: 0, 0.5, 1, 2
+    let multiplier = 0;
+    if (val >= 1.5) multiplier = 2;         // Expertise
+    else if (val >= 0.75) multiplier = 1;   // geübt
+    else if (val > 0) multiplier = 0.5;     // halb geübt
+
+    debug.systemToolsMatch = { key: bestKey, entry: bestEntry, rawValue: val, multiplier };
+
+    return {
+      hasTools: true,
+      profMultiplier: multiplier,
+      source: "actor.tools",
+      debug
+    };
+  }
+
+  /* ---------- 2) Fallback: Tool-Item ---------- */
+
+  const thievesItem = actor.items.find((it) => {
+    const name = (it.name ?? "").toLowerCase();
+    const typeValue = getProp(it, "system.type.value") ?? "";
+    return (
+      it.type === "tool" &&
+      (
+        name.includes("diebes") ||
+        name.includes("thieves") ||
+        typeValue === "thievesTools" ||
+        typeValue === "thief"
+      )
+    );
+  });
+
+  debug.thievesItem = thievesItem;
+
+  if (!thievesItem) {
+    return {
+      hasTools: false,
+      profMultiplier: 0,
+      source: "none",
+      debug
+    };
+  }
+
+  // DnD5e-Items: system.proficient (0..3) – 0 = keine, 1 = halb, 2 = prof., 3 = Expertise
+  let profRaw =
+    getProp(thievesItem, "system.proficient") ??
+    getProp(thievesItem, "system.proficiency") ??
+    getProp(thievesItem, "system.prof") ??
+    0;
+
+  if (typeof profRaw === "string") profRaw = Number(profRaw) || 0;
+  if (typeof profRaw !== "number") profRaw = 0;
+
+  let multiplier = 0;
+  switch (profRaw) {
+    case 3: // Expertise
+      multiplier = 2;
+      break;
+    case 2: // geübt
+      multiplier = 1;
+      break;
+    case 1: // halb geübt
+      multiplier = 0.5;
+      break;
+    default:
+      multiplier = 0;
+  }
+
+  debug.itemProficiency = { profRaw, multiplier };
+
+  return {
+    hasTools: true,
+    profMultiplier: multiplier,
+    source: "item",
+    debug
+  };
+}
 
 /* ----------------------------------------- */
 /*  Konfigurations-Fenster (GM)              */
@@ -138,68 +268,57 @@ class LockpickingConfigApp extends FormApplication {
         return;
       }
 
-      /* ----------------- Diebeswerkzeug prüfen ----------------- */
-
       const getProp = foundry.utils.getProperty;
 
-      const thievesTools = actor.items.find((it) => {
-        const name = (it.name ?? "").toLowerCase();
-        const typeValue = getProp(it, "system.type.value") ?? "";
-        return (
-          it.type === "tool" &&
-          (
-            name.includes("diebes") ||      // „Diebeswerkzeug“
-            name.includes("thieves") ||     // „Thieves' Tools“
-            typeValue === "thievesTools" ||
-            typeValue === "thief"
-          )
-        );
+      /* ---------- Diebeswerkzeug & Proficiency ---------- */
+
+      const toolInfo = getThievesToolsProficiency(actor);
+      console.log("lockpicking-minigame | Tool-Info:", {
+        actor: actor.name,
+        user: user.name,
+        toolInfo
       });
 
-      if (!thievesTools) {
+      if (!toolInfo.hasTools) {
         ui.notifications.warn(
           `${actor.name} besitzt keine Diebeswerkzeuge – Schlossknacken nicht möglich.`
         );
-        console.log("lockpicking-minigame | Kein Diebeswerkzeug gefunden für", actor.name);
         return;
       }
 
-      // Grundwerte
       const dexMod = getProp(actor, "system.abilities.dex.mod") ?? 0;
       const profBonus = getProp(actor, "system.attributes.prof") ?? 0;
 
-      // Vereinfachung:
-      // Wenn Diebeswerkzeug vorhanden ist, behandeln wir den Charakter als geübt.
-      // (Proficiencies über system.proficient sind zu inkonsistent zwischen Versionen.)
-      const proficientLevel = 1; // 1 = geübt
+      const profMultiplier = toolInfo.profMultiplier; // 0 / 0.5 / 1 / 2
+      const bonus = dexMod + profBonus * profMultiplier;
 
-      let bonus = dexMod;
-      let disadvantage = false; // Nachteil-Mechanik wird vorerst deaktiviert
+      // Nachteil nur, wenn komplett ungeübt (multiplier = 0)
+      const disadvantage = profMultiplier === 0;
 
-      if (proficientLevel > 0) {
-        bonus = dexMod + profBonus;
-        disadvantage = false;
-      } else {
-        bonus = dexMod;
-        disadvantage = false; // auch hier: kein Nachteil mehr verwenden
-      }
-
-      console.log("lockpicking-minigame | Proficiency-Check (vereinfacht):", {
+      console.log("lockpicking-minigame | Berechnete Werte:", {
         actor: actor.name,
         user: user.name,
         dc,
         dexMod,
         profBonus,
-        proficientLevel,
+        profMultiplier,
         bonus,
         disadvantage
       });
 
       /* ----------------- Chat-Nachricht + Flag ------------------ */
 
+      const profText =
+        profMultiplier === 2 ? " (Expertise)" :
+        profMultiplier === 1 ? " (geübt)" :
+        profMultiplier === 0.5 ? " (halb geübt)" :
+        " (ungeübt)";
+
+      const disadvText = disadvantage ? ", mit Nachteil" : "";
+
       const content =
         `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
-        `(DC ${dc}, Bonus ${bonus}).`;
+        `(DC ${dc}, Bonus ${bonus}${profText}${disadvText}).`;
 
       await ChatMessage.create({
         content,
@@ -277,7 +396,7 @@ class LockpickingGameApp extends Application {
     this._center = html.find(".lp-center")[0];
     this._startButton = html.find('[data-action="start"]')[0];
 
-    // Größe & Geschwindigkeit auf Basis von DC / Bonus bestimmen
+    // Größe & Geschwindigkeit auf Basis von DC / Bonus / Nachteil bestimmen
     this._setupGameParameters();
 
     // Anfangsposition zeichnen
@@ -293,7 +412,7 @@ class LockpickingGameApp extends Application {
 
   /** Berechnet Balken-Größe & Geschwindigkeit */
   _setupGameParameters() {
-    const { dc, bonus } = this.config;
+    const { dc, bonus, disadvantage } = this.config;
 
     // effektive Schwierigkeit: höher = schwieriger
     const diff = Math.max(0, dc - bonus);
@@ -302,15 +421,20 @@ class LockpickingGameApp extends Application {
     let size = 0.45 - diff * 0.02;
     size = Math.min(0.45, Math.max(0.1, size));
 
+    // bei Nachteil: halb so groß
+    if (disadvantage) size *= 0.5;
+
     this.barSize = size;
 
     // Grundgeschwindigkeit, bei diff höher etwas schneller
     let speed = 0.7 + diff * 0.02;
+    if (disadvantage) speed *= 1.3;
     this.speed = speed;
 
     console.log("lockpicking-minigame | Minigame-Parameter:", {
       dc,
       bonus,
+      disadvantage,
       barSize: this.barSize,
       speed: this.speed
     });
@@ -402,7 +526,7 @@ class LockpickingGameApp extends Application {
 
   /** Prüft, ob der Balken den Mittelpunkt trifft und schreibt Ergebnis in den Chat */
   async _evaluateResult() {
-    const { dc, bonus } = this.config;
+    const { dc, bonus, disadvantage } = this.config;
 
     const center = 0.5;
     const dist = Math.abs(this.barPosition - center);
@@ -419,9 +543,11 @@ class LockpickingGameApp extends Application {
       else quality = " (knapp geschafft)";
     }
 
+    const disadvText = disadvantage ? ", mit Nachteil" : "";
+
     const flavor =
       `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
-      `DC ${dc}, Bonus ${bonus}.<br>` +
+      `DC ${dc}, Bonus ${bonus}${disadvText}.<br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>${quality}.`;
 
     await ChatMessage.create({
