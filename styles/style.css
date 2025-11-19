@@ -1,66 +1,79 @@
-.lockpicking-game .lp-timer-row {
+.lockpicking-game .lp-steps {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
 }
 
-.lockpicking-game .lp-timer-bar {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-.lockpicking-game .lp-timer-fill {
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, #4caf50, #ffc107, #f44336);
-  transition: width 0.1s linear;
-}
-
-.lockpicking-game .lp-current-key-wrapper {
+.lockpicking-game .lp-step {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.lockpicking-game .lp-current-key {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3rem;
-  min-height: 3rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.5rem;
-  background: rgba(0,0,0,0.4);
-  font-size: 1.8rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-weight: bold;
+  border: 1px solid #666;
+  background: #222;
+  color: #ccc;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
-.lockpicking-game .lp-keys-progress {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: 0.25rem;
+.lockpicking-game .lp-step.pending {
+  opacity: 0.6;
 }
 
-.lockpicking-game .lp-key-step {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.15);
+.lockpicking-game .lp-step.active {
+  background: #444;
+  color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 6px rgba(255,255,255,0.4);
 }
 
-.lockpicking-game .lp-key-step--active {
-  background: #ffeb3b;
+.lockpicking-game .lp-step.done {
+  background: #1f6f2f;
+  color: #fff;
+  opacity: 0.9;
 }
 
-.lockpicking-game .lp-key-step--done {
-  background: #4caf50;
+.lockpicking-game .lp-qte-key-display {
+  margin-top: 1rem;
+  text-align: center;
 }
 
-.lockpicking-game .lp-key-step--upcoming {
-  background: rgba(255,255,255,0.15);
+.lockpicking-game .lp-qte-key-box {
+  display: inline-flex;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: bold;
+  border: 2px solid #ffd26f;
+  background: #33250f;
+  box-shadow: 0 0 10px rgba(0,0,0,0.6);
+}
+
+.lockpicking-game .lp-qte-key-hint {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.lockpicking-game .lp-timebar-outer {
+  width: 100%;
+  height: 10px;
+  border-radius: 6px;
+  background: #333;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.lockpicking-game .lp-timebar-inner {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
+  transition: width 0.05s linear;
 }
