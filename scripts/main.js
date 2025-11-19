@@ -45,11 +45,7 @@ Hooks.once("ready", () => {
       actor: actor.name,
       dc: data.dc,
       bonus: data.bonus,
-      disadvantage: data.disadvantage,
-      neededRoll: data.neededRoll,
-      impossible: data.impossible,
-      autoSuccess: data.autoSuccess,
-      successChance: data.successChance
+      disadvantage: data.disadvantage
     });
 
     new LockpickingGameApp(actor, data).render(true);
@@ -168,48 +164,49 @@ class LockpickingConfigApp extends FormApplication {
         return;
       }
 
-      // Grundwerte vom Actor
+      // Grundwerte
       const dexMod = getProp(actor, "system.abilities.dex.mod") ?? 0;
       const profBonus = getProp(actor, "system.attributes.prof") ?? 0;
 
-      // Rohwert für Tool-Proficiency (System kann hier je nach Version leicht variieren)
-      let profRaw =
-        getProp(thievesTools, "system.proficient") ??
-        getProp(thievesTools, "system.proficiency") ??
-        0;
+      // Proficiency-Level des Tools (0, 0.5, 1, 2)
+      const profLevelRaw = getProp(thievesTools, "system.proficient") ?? 0;
+      const profLevel = Number(profLevelRaw);
 
-      // Manche Systeme speichern true/false – auf 0 / 1 normalisieren
-      if (profRaw === true) profRaw = 1;
-      if (profRaw === false) profRaw = 0;
+      let bonus = dexMod;
+      let disadvantage = false;
+      let profLabel = "keine";
 
-      // Erwartete Werte: 0 = keine, 0.5 = halb, 1 = prof., 2 = Expertise
-      let profMultiplier = Number(profRaw) || 0;
+      if (profLevel === 0) {
+        // keine Proficiency → nur DEX, mit Nachteil
+        bonus = dexMod;
+        disadvantage = true;
+        profLabel = "keine";
+      } else if (profLevel === 0.5) {
+        // halbe Proficiency
+        bonus = dexMod + Math.floor(profBonus / 2);
+        disadvantage = false;
+        profLabel = "halb";
+      } else if (profLevel === 1) {
+        // normale Proficiency
+        bonus = dexMod + profBonus;
+        disadvantage = false;
+        profLabel = "geübt";
+      } else if (profLevel >= 2) {
+        // Expertise (doppelte Proficiency)
+        bonus = dexMod + profBonus * 2;
+        disadvantage = false;
+        profLabel = "Expertise";
+      }
 
-      const toolInfo = {
-        profRaw,
-        profMultiplier,
-        dexMod,
-        profBonus
-      };
       console.log("lockpicking-minigame | Tool-Info:", {
         actor: actor.name,
         user: user.name,
-        toolInfo
+        toolItem: thievesTools.name,
+        profLevelRaw,
+        profLevel,
+        dexMod,
+        profBonus
       });
-
-      // Bonus & Nachteil anhand der Proficiency bestimmen
-      let bonus = dexMod;
-      let disadvantage = true;
-
-      if (profMultiplier >= 1) {
-        // geübt oder Expertise → Geschick + Übungsbonus * Faktor, kein Nachteil
-        bonus = dexMod + profBonus * profMultiplier;
-        disadvantage = false;
-      } else {
-        // ungeübt → nur Geschick, mit Nachteil
-        bonus = dexMod;
-        disadvantage = true;
-      }
 
       console.log("lockpicking-minigame | Berechnete Werte:", {
         actor: actor.name,
@@ -217,60 +214,18 @@ class LockpickingConfigApp extends FormApplication {
         dc,
         dexMod,
         profBonus,
-        profMultiplier,
+        profLevel,
+        profLabel,
         bonus,
         disadvantage
-      });
-
-      /* ----------------- Erreichbarkeit des DC prüfen ----------------- */
-
-      let neededRoll = dc - bonus; // minimaler d20-Wurf, der nötig ist
-      let impossible = false;
-      let autoSuccess = false;
-      let successChance = 0;
-
-      if (neededRoll <= 1) {
-        neededRoll = 1;
-        autoSuccess = true;
-        successChance = 1;
-      } else if (neededRoll > 20) {
-        impossible = true;
-        successChance = 0;
-      } else {
-        successChance = (21 - neededRoll) / 20;
-      }
-
-      let chanceLabel;
-      if (impossible) {
-        chanceLabel =
-          `Regeltechnisch <b>unmöglich</b> – selbst mit einer 20 erreichst du nur ` +
-          `<b>${bonus + 20}</b> statt DC <b>${dc}</b>.`;
-      } else if (autoSuccess) {
-        chanceLabel =
-          `Regeltechnisch <b>immer ein Erfolg</b> – selbst mit einer 1 erreichst du ` +
-          `<b>${bonus + 1}</b> ≥ DC <b>${dc}</b>.`;
-      } else {
-        const percent = Math.round(successChance * 100);
-        chanceLabel =
-          `Benötigter Wurf: <b>${neededRoll}+</b> auf dem W20 ` +
-          `(≈ <b>${percent}%</b> Erfolgswahrscheinlichkeit).`;
-      }
-
-      console.log("lockpicking-minigame | DC-Erreichbarkeit:", {
-        dc,
-        bonus,
-        neededRoll,
-        impossible,
-        autoSuccess,
-        successChance
       });
 
       /* ----------------- Chat-Nachricht + Flag ------------------ */
 
       const content =
         `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
-        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}).<br>` +
-        chanceLabel;
+        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}) ` +
+        `(<i>${profLabel} mit Diebeswerkzeug</i>).`;
 
       await ChatMessage.create({
         content,
@@ -282,11 +237,7 @@ class LockpickingConfigApp extends FormApplication {
             actorId,
             dc,
             bonus,
-            disadvantage,
-            neededRoll,
-            impossible,
-            autoSuccess,
-            successChance
+            disadvantage
           }
         }
       });
@@ -307,7 +258,7 @@ class LockpickingGameApp extends Application {
   constructor(actor, config, options = {}) {
     super(options);
     this.actor = actor;
-    this.config = config; // { dc, bonus, disadvantage, neededRoll, ... }
+    this.config = config; // { dc, bonus, disadvantage, ... }
 
     // Minigame-State
     this.running = false;
@@ -326,22 +277,38 @@ class LockpickingGameApp extends Application {
       classes: ["lockpicking-game"],
       title: "Lockpicking",
       template: "modules/lockpicking-minigame/templates/lock-game.hbs",
-      width: 460,
+      width: 420,
       height: "auto",
       resizable: false
     });
   }
 
   getData(options) {
+    const dc = Number(this.config.dc ?? 10);
+    const bonus = Number(this.config.bonus ?? 0);
+    const disadvantage = !!this.config.disadvantage;
+
+    // benötigter Wurf auf dem W20
+    let neededRoll = dc - bonus;
+    let impossible = false;
+    let autoSuccess = false;
+
+    if (neededRoll <= 1) {
+      neededRoll = 1;
+      autoSuccess = true;
+    } else if (neededRoll > 20) {
+      neededRoll = 20;
+      impossible = true;
+    }
+
     return {
       actorName: this.actor.name,
-      dc: this.config.dc,
-      bonus: this.config.bonus,
-      disadvantage: this.config.disadvantage,
-      neededRoll: this.config.neededRoll,
-      impossible: this.config.impossible,
-      autoSuccess: this.config.autoSuccess,
-      successChance: this.config.successChance
+      dc,
+      bonus,
+      disadvantage,
+      neededRoll,
+      impossible,
+      autoSuccess
     };
   }
 
@@ -374,29 +341,21 @@ class LockpickingGameApp extends Application {
   _setupGameParameters() {
     const { dc, bonus, disadvantage } = this.config;
 
-    const diff = Math.max(0, dc - bonus); // effektive Schwierigkeit
+    // effektive Schwierigkeit: höher = schwieriger
+    const diff = Math.max(0, dc - bonus);
 
-    // Balken-Größe: Basis + Skill, minus Strafte durch diff
-    let baseSize = 0.35 + (bonus * 0.015);   // Skill macht den Balken sichtbar breiter
-    let sizePenalty = diff * 0.015;          // hoher DC zieht wieder was ab
-    let size = baseSize - sizePenalty;
+    // Grundgröße: bei diff <= 5 etwa 45%, wird kleiner bis min ~10%
+    let size = 0.45 - diff * 0.02;
+    size = Math.min(0.45, Math.max(0.1, size));
 
-    // Grenzen setzen
-    size = Math.max(0.08, Math.min(0.6, size));
-
-    // Bei Nachteil kleiner machen
-    if (disadvantage) size *= 0.6;
+    // bei Nachteil: halb so groß
+    if (disadvantage) size *= 0.5;
 
     this.barSize = size;
 
-    // Geschwindigkeit: mit höherer Schwierigkeit schneller
-    let speed = 0.5 + diff * 0.03; // Basis
-    if (!disadvantage) speed *= 0.8; // ohne Nachteil etwas langsamer
-    else speed *= 1.1;               // mit Nachteil etwas schneller
-
-    // Grenzen
-    speed = Math.max(0.4, Math.min(2.5, speed));
-
+    // Grundgeschwindigkeit, bei diff höher etwas schneller
+    let speed = 0.7 + diff * 0.02;
+    if (disadvantage) speed *= 1.3;
     this.speed = speed;
 
     console.log("lockpicking-minigame | Minigame-Parameter:", {
@@ -513,7 +472,7 @@ class LockpickingGameApp extends Application {
 
     const flavor =
       `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
-      `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ""}.<br>` +
+      `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}.<br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>${quality}.`;
 
     await ChatMessage.create({
