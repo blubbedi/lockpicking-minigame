@@ -1,115 +1,90 @@
 /******************************************************
- *  Lockpicking Minigame – Stylesheet (komplett)
+ *  Lockpicking Minigame – Stylesheet (neu)
  ******************************************************/
 
+/* Fenster allgemein */
 .lockpicking-game {
   padding: 6px 10px 10px;
   font-family: var(--font-primary);
 }
 
-/* ----------------------------------------- */
-/* Header                                    */
-/* ----------------------------------------- */
+/* Root */
+.lockpicking-game .lp-game-root {
+  font-size: 12px;
+}
 
-.lockpicking-game .lp-header h2 {
-  margin: 0 0 2px;
+/* Titel & Meta */
+.lockpicking-game .lp-title {
+  margin: 0 0 4px;
   font-size: 18px;
   font-weight: 700;
 }
 
-.lockpicking-game .lp-subtitle {
-  margin: 0 0 6px;
-  font-size: 12px;
-  color: #666;
+.lockpicking-game .lp-meta {
+  margin-bottom: 8px;
+}
+
+.lockpicking-game .lp-tags-row {
+  margin: 4px 0 6px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .lp-tag {
-  padding: 0 6px;
+  padding: 1px 6px;
   border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
+  background: #e5e5e5;
+  border: 1px solid #b5b5b5;
 }
 
-.lp-tag-good {
+.lp-tag--dc {
+  background: #e3f2fd;
+  border-color: #90caf9;
+}
+
+.lp-tag--bonus {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+}
+
+.lp-tag--good {
   background: #c8f7c5;
   color: #095b2c;
 }
 
-.lp-tag-bad {
+.lp-tag--bad {
   background: #ffd0d0;
   color: #7d1111;
 }
 
-/* ----------------------------------------- */
-/* Body / Instructions                       */
-/* ----------------------------------------- */
-
-.lockpicking-game .lp-body {
-  margin-top: 4px;
-}
-
-.lp-instructions {
+.lockpicking-game .lp-expl {
   font-size: 12px;
-  margin-bottom: 10px;
+  margin: 0 0 8px;
   line-height: 1.3;
   color: #444;
 }
 
-/* ----------------------------------------- */
-/* Fortschrittsleiste (Schritte)             */
-/* ----------------------------------------- */
-
-.lp-progress-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+/* Sektionen */
+.lp-section {
+  margin-top: 4px;
 }
 
-.lp-progress-row label {
+.lp-section-label {
   font-size: 11px;
   color: #555;
-  min-width: 70px;
+  margin-bottom: 2px;
 }
 
-.lp-sequence {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.lp-seq-step {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  background: #ddd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #aaa;
-}
-
-.lp-seq-step.done {
-  background: #4caf50;
-  border-color: #3e8e41;
-}
-
-.lp-seq-icon {
-  width: 16px;
-  height: 16px;
-}
-
-/* ----------------------------------------- */
-/* Timer-Bar                                 */
-/* ----------------------------------------- */
-
+/* Timer-Bar */
 .lp-timer-bar {
   width: 100%;
   height: 10px;
   background: #303030;
   border-radius: 5px;
-  margin: 10px 0 14px;
+  margin: 4px 0 10px;
   overflow: hidden;
   border: 1px solid #444;
 }
@@ -121,16 +96,48 @@
   transition: width 0.03s linear;
 }
 
-/* ----------------------------------------- */
-/* Aktuelle Taste                            */
-/* ----------------------------------------- */
-
-.lp-current-wrapper {
-  text-align: center;
-  margin-bottom: 8px;
+/* Gesamtsequenz (oben) */
+.lp-sequence-steps {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 0;
 }
 
-.lp-current-box {
+.lp-sequence-step {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: #ddd;
+  border: 1px solid #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-sequence-step--success {
+  background: #4caf50;
+  border-color: #3e8e41;
+}
+
+/* Das eigentliche Icon im Schritt */
+.lp-sequence-step-icon {
+  width: 18px;
+  height: 18px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* Aktuelle Taste (großes Icon) */
+.lp-current-key-box {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.lp-current-key-icon {
   width: 64px;
   height: 64px;
   margin: 0 auto 4px;
@@ -143,20 +150,20 @@
   box-shadow: inset 0 0 6px rgba(0,0,0,0.15);
 }
 
-.lp-current-icon {
-  width: 36px;
-  height: 36px;
+.lp-current-key-icon-inner {
+  width: 40px;
+  height: 40px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
-.lp-current-label {
+.lp-current-key-label {
   font-size: 11px;
   color: #555;
 }
 
-/* ----------------------------------------- */
-/* Status-Text                               */
-/* ----------------------------------------- */
-
+/* Status-Text */
 .lp-status-text {
   font-size: 12px;
   margin-top: 6px;
@@ -165,25 +172,59 @@
   font-weight: 500;
 }
 
-/* ----------------------------------------- */
-/* Footer / Buttons                          */
-/* ----------------------------------------- */
-
-.lp-footer {
+/* Buttons */
+.lp-buttons {
   margin-top: 10px;
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
-.lp-btn-cancel {
-  padding: 4px 14px;
+.lp-btn {
+  padding: 4px 12px;
   font-size: 12px;
   border-radius: 5px;
-  background: #e5e5e5;
   border: 1px solid #bbb;
+  background: #e5e5e5;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.lp-btn-cancel:hover {
+.lp-btn:hover {
   background: #d6d6d6;
+}
+
+.lp-btn--primary {
+  background: #3f51b5;
+  border-color: #303f9f;
+  color: white;
+}
+
+.lp-btn--primary:hover {
+  background: #3949ab;
+}
+
+/* -----------------------------------------
+ * Pfeil-Grafiken (JPG)
+ * Pfade ggf. an dein Modul anpassen
+ * ----------------------------------------- */
+
+.lp-sequence-step-icon[data-key="ArrowUp"],
+.lp-current-key-icon-inner[data-key="ArrowUp"] {
+  background-image: url("modules/lockpicking-minigame/icons/arrow-up.jpg");
+}
+
+.lp-sequence-step-icon[data-key="ArrowDown"],
+.lp-current-key-icon-inner[data-key="ArrowDown"] {
+  background-image: url("modules/lockpicking-minigame/icons/arrow-down.jpg");
+}
+
+.lp-sequence-step-icon[data-key="ArrowLeft"],
+.lp-current-key-icon-inner[data-key="ArrowLeft"] {
+  background-image: url("modules/lockpicking-minigame/icons/arrow-left.jpg");
+}
+
+.lp-sequence-step-icon[data-key="ArrowRight"],
+.lp-current-key-icon-inner[data-key="ArrowRight"] {
+  background-image: url("modules/lockpicking-minigame/icons/arrow-right.jpg");
 }
