@@ -1,51 +1,52 @@
-<div class="lp-game-root">
+<div class="lp-container">
   <header class="lp-header">
     <h2>Schlossknacken</h2>
-    <div class="lp-subtitle">
-      <span>{{actorName}}</span>
-      <span>– DC {{dc}}, Bonus {{bonus}}{{#if disadvantage}}, mit Nachteil{{/if}}</span>
-    </div>
   </header>
 
-  <section class="lp-instructions">
+  <section class="lp-info">
     <p>
-      Drücke nacheinander die angezeigten <b>Pfeiltasten</b>, bevor der Zeitbalken leer ist.
-      Jede Taste wird einzeln abgefragt. Geschaffte Schritte werden grün markiert.
+      {{actorName}} – DC {{dc}}, Bonus {{bonus}}
+      {{#if disadvantage}}
+        <span class="lp-badge disadvantage">mit Nachteil</span>
+      {{else}}
+        <span class="lp-badge advantage">ohne Nachteil</span>
+      {{/if}}
+    </p>
+
+    <p class="lp-hint">
+      Drücke die angezeigten Pfeiltasten, bevor der Zeitbalken leer ist.
+      Jede Taste erscheint einzeln. Geschaffte Schritte werden oben grün markiert.
     </p>
   </section>
 
-  <section class="lp-steps-section">
-    <div class="lp-steps-label">Gesamte Sequenz:</div>
-    <div class="lp-steps">
-      {{#each steps}}
-        <div class="lp-step pending" data-step="{{index}}">
-          <span class="lp-step-label">{{label}}</span>
+  <!-- ✓ OBERE LEISTE: ZEIGT NUR ABGESCHLOSSENE SCHRITTE -->
+  <section class="lp-steps">
+    {{#each steps as |step|}}
+      {{#if (eq step.state "done")}}
+        <div class="lp-step done">
+          {{step.icon}}
         </div>
-      {{/each}}
+      {{/if}}
+    {{/each}}
+  </section>
+
+  <!-- TIMER -->
+  <section class="lp-timer">
+    <div class="lp-timer-bar">
+      <div class="lp-timer-fill" style="width: {{timerPercent}}%;"></div>
     </div>
   </section>
 
-  <section class="lp-qte-section">
-    <div class="lp-timebar-outer">
-      <div class="lp-timebar-inner"></div>
+  <!-- AKTUELLE TASTE -->
+  <section class="lp-current-key">
+    <div class="lp-current-key-box">
+      {{currentIcon}}
     </div>
-
-    <div class="lp-qte-key-display">
-      <div class="lp-qte-key-box">
-        <span class="lp-qte-key-label">Bereit?</span>
-      </div>
-      <div class="lp-qte-key-hint">
-        Aktuelle Taste
-      </div>
-    </div>
+    <div class="lp-current-label">Aktuelle Taste</div>
   </section>
 
+  <!-- BUTTONS -->
   <footer class="lp-footer">
-    <button type="button" class="lp-btn lp-btn-primary" data-action="start">
-      Starten
-    </button>
-    <button type="button" class="lp-btn" data-action="close">
-      Abbrechen
-    </button>
+    <button class="lp-button-cancel" data-action="cancel">Abbrechen</button>
   </footer>
 </div>
