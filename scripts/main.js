@@ -346,7 +346,7 @@ class LockpickingGameApp extends Application {
     }
 
     // Zeitlimit: Basis 6s, modifiziert durch (Bonus - DC), gekappt
-    let timeLimit = 6 + (bonus - dc) * 0.2;
+    let timeLimit = 10 + (bonus - dc) * 0.2;
     timeLimit = Math.max(2, Math.min(10, timeLimit));
     if (disadvantage) timeLimit *= 0.75;
 
@@ -354,7 +354,7 @@ class LockpickingGameApp extends Application {
     this.remainingTime = timeLimit;
 
     // Tastenpool – bewusst wenige, leicht erreichbare Tasten
-    const KEY_POOL = ["q", "w", "e", "a", "s", "d", "f"];
+    const KEY_POOL = ["w","a", "s", "d"];
 
     this.sequence = [];
     this.displaySequence = [];
