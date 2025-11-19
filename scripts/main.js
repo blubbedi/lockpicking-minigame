@@ -354,7 +354,7 @@ class LockpickingGameApp extends Application {
     this.remainingTime = timeLimit;
 
     // Tastenpool – bewusst wenige, leicht erreichbare Tasten
-    const KEY_POOL = ["w","a", "s", "d"];
+    const KEY_POOL = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
 
     this.sequence = [];
     this.displaySequence = [];
@@ -499,7 +499,7 @@ class LockpickingGameApp extends Application {
     const expected = this.sequence[this.currentIndex];
 
     // Nur Eingaben aus unserem Pool interessieren uns überhaupt
-    const KEY_POOL = ["w","a", "s", "d"];
+    const KEY_POOL = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
     if (!KEY_POOL.includes(key)) return;
 
     event.preventDefault();
