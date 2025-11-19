@@ -171,10 +171,9 @@ class LockpickingConfigApp extends FormApplication {
       const profBonus = getProp(actor, "system.attributes.prof") ?? 0;
 
       // dnd5e-Tool-Proficiency am Item:
-      // 0 = keine, 0.5 = halb, 1 = prof., 2 = Expertise  (als Wert lesen wir typischerweise 0..3)
+      // 0 = keine, 1 = halb, 2 = prof., 3 = Expertise
       const rawProf = getProp(thievesTools, "system.proficient") ?? 0;
 
-      // Mapping für den Multiplikator
       let profMultiplier = 0;
       switch (rawProf) {
         case 1: // half
@@ -183,17 +182,14 @@ class LockpickingConfigApp extends FormApplication {
         case 2: // proficient
           profMultiplier = 1;
           break;
-        case 3: // expertise (doppelt)
+        case 3: // expertise
           profMultiplier = 2;
           break;
         default:
           profMultiplier = 0;
       }
 
-      // Bonus: Dex + (Prof * Multiplikator)
       const bonus = dexMod + profBonus * profMultiplier;
-
-      // Ungeübt (inkl. nur halber Proficiency) => Nachteil
       const disadvantage = profMultiplier < 1;
 
       console.log("lockpicking-minigame | Berechnete Werte:", {
@@ -288,7 +284,7 @@ class LockpickingGameApp extends Application {
     this.config = config; // { dc, bonus, disadvantage, ... }
 
     // QTE-State
-    this.sequence = [];        // komplette Reihenfolge der Pfeile
+    this.sequence = [];        // komplette Reihenfolge der Pfeile {code,label}
     this.currentIndex = 0;     // welcher Schritt gerade
     this.timePerKey = 2500;    // ms
     this.finished = false;
@@ -333,7 +329,11 @@ class LockpickingGameApp extends Application {
       dc: this.config.dc,
       bonus: this.config.bonus,
       disadvantage: this.config.disadvantage,
-      steps: Array.from({ length: this.sequence.length })
+      // Jede Taste als eigener „Step“ mit Label
+      steps: this.sequence.map((k, idx) => ({
+        index: idx,
+        label: k.label
+      }))
     };
   }
 
@@ -436,6 +436,7 @@ class LockpickingGameApp extends Application {
 
     const current = this.sequence[index];
 
+    // große, zentrale Anzeige
     if (this._keyLabel) {
       this._keyLabel.textContent = current.label;
     }
