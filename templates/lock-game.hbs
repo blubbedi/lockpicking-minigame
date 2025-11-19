@@ -1,51 +1,86 @@
-<section class="lp-header">
-  <div class="lp-icon">
-    <i class="fa-solid fa-lock"></i>
-  </div>
-  <div class="lp-title-block">
-    <h2>Schlossknacken</h2>
-    <p>
-      <strong>{{actorName}}</strong> versucht ein Schloss zu knacken.<br>
-      DC: <span class="lp-tag lp-tag-dc">{{dc}}</span>
-      Bonus: <span class="lp-tag lp-tag-bonus">{{bonus}}</span>
-      {{#if disadvantage}}
-        <span class="lp-tag lp-tag-disadv">mit Nachteil</span>
-      {{else}}
-        <span class="lp-tag lp-tag-adv">ohne Nachteil</span>
-      {{/if}}
-    </p>
-  </div>
-</section>
+<div class="lp-container">
 
-<section class="lp-body">
-  <div class="lp-instructions">
+  <!-- Kopfbereich -->
+  <header class="lp-header">
+    <div class="lp-title-row">
+      <h1>SCHLOSSKNACKEN</h1>
+    </div>
+
+    <p class="lp-subtitle">
+      {{actorName}} versucht ein Schloss zu knacken.
+    </p>
+
+    <div class="lp-tags">
+      <span class="lp-tag lp-tag-dc">DC: {{dc}}</span>
+      <span class="lp-tag lp-tag-bonus">Bonus: {{bonus}}</span>
+
+      {{#if disadvantage}}
+        <span class="lp-tag lp-tag-bad">mit Nachteil</span>
+      {{else}}
+        <span class="lp-tag lp-tag-good">ohne Nachteil</span>
+      {{/if}}
+    </div>
+
+    <div class="lp-chance">
+      {{#if impossible}}
+        <p class="lp-text-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          Dieses Schloss ist für diese Figur regeltechnisch <b>unmöglich</b> zu knacken –
+          selbst mit einer 20 kommt sie nicht auf DC {{dc}}.
+        </p>
+      {{else if autoSuccess}}
+        <p class="lp-text-success">
+          <i class="fas fa-check-circle"></i>
+          Dieses Schloss ist für diese Figur regeltechnisch <b>immer ein Erfolg</b> –
+          selbst mit einer 1 erreicht sie mindestens DC {{dc}}.
+        </p>
+      {{else}}
+        <p class="lp-text-info">
+          Benötigter Wurf auf dem W20, um den DC zu erreichen:
+          <b>{{neededRoll}}+</b>.
+        </p>
+      {{/if}}
+    </div>
+  </header>
+
+  <!-- Kurze Anleitung -->
+  <section class="lp-instructions">
     <ol>
       <li>Klicke <b>Start</b>, um den Schieber in Bewegung zu setzen.</li>
-      <li>Versuche, den <b>hellen Bereich</b> genau über dem <b>Mittelpunkt</b> zu stoppen.</li>
-      <li>Je höher dein Bonus, desto breiter ist der Trefferbereich.</li>
-      <li>Bei Nachteil ist der Bereich kleiner und bewegt sich schneller.</li>
+      <li>Versuche, den hellen Bereich genau über dem <b>Mittelpunkt</b> zu stoppen.</li>
+      <li>Je höher dein <b>Bonus</b>, desto breiter ist der Trefferbereich.</li>
+      <li>Je höher der <b>DC</b>, desto kleiner und schneller wird der Trefferbereich.</li>
+      <li>Bei <b>Nachteil</b> ist der Bereich kleiner und bewegt sich schneller.</li>
     </ol>
-  </div>
+  </section>
 
-  <div class="lp-track-wrapper">
+  <!-- Minigame-Leiste -->
+  <section class="lp-track-section">
+    <div class="lp-track-labels">
+      <span>Fehlschlag</span>
+      <span>Trefferzone</span>
+      <span>Fehlschlag</span>
+    </div>
+
     <div class="lp-track">
-      <div class="lp-track-bg"></div>
       <div class="lp-center"></div>
       <div class="lp-bar"></div>
     </div>
-    <div class="lp-track-legend">
-      <span class="lp-legend-left">Fehlschlag</span>
-      <span class="lp-legend-center">Trefferzone</span>
-      <span class="lp-legend-right">Fehlschlag</span>
-    </div>
-  </div>
-</section>
+  </section>
 
-<footer class="lp-footer">
-  <button type="button" class="lp-btn lp-btn-primary" data-action="start">
-    Start
-  </button>
-  <button type="button" class="lp-btn lp-btn-ghost" data-action="close">
-    Abbrechen
-  </button>
-</footer>
+  <!-- Fußbereich mit Buttons -->
+  <footer class="lp-footer">
+    <button type="button"
+            class="lp-btn lp-btn-primary"
+            data-action="start">
+      Start
+    </button>
+
+    <button type="button"
+            class="lp-btn lp-btn-secondary"
+            data-action="close">
+      Abbrechen
+    </button>
+  </footer>
+
+</div>
