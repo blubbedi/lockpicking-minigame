@@ -3,7 +3,7 @@
   <!-- Kopfbereich -->
   <header class="lp-header">
     <div class="lp-title-row">
-      <h1>SCHLOSSKNACKEN</h1>
+      <h1>SCHLOSSKNACKEN – QTE</h1>
     </div>
 
     <p class="lp-subtitle">
@@ -21,50 +21,33 @@
       {{/if}}
     </div>
 
-    <div class="lp-chance">
-      {{#if impossible}}
-        <p class="lp-text-warning">
-          <i class="fas fa-exclamation-triangle"></i>
-          Dieses Schloss ist für diese Figur regeltechnisch <b>unmöglich</b> zu knacken –
-          selbst mit einer 20 kommt sie nicht auf DC {{dc}}.
-        </p>
-      {{else if autoSuccess}}
-        <p class="lp-text-success">
-          <i class="fas fa-check-circle"></i>
-          Dieses Schloss ist für diese Figur regeltechnisch <b>immer ein Erfolg</b> –
-          selbst mit einer 1 erreicht sie mindestens DC {{dc}}.
-        </p>
-      {{else}}
-        <p class="lp-text-info">
-          Benötigter Wurf auf dem W20, um den DC zu erreichen:
-          <b>{{neededRoll}}+</b>.
-        </p>
-      {{/if}}
+    <div class="lp-timer-row">
+      <span>Zeitlimit:</span>
+      <span class="lp-timer-value">{{timeLimit}} s</span>
     </div>
   </header>
 
   <!-- Kurze Anleitung -->
   <section class="lp-instructions">
-    <ol>
-      <li>Klicke <b>Start</b>, um den Schieber in Bewegung zu setzen.</li>
-      <li>Versuche, den hellen Bereich genau über dem <b>Mittelpunkt</b> zu stoppen.</li>
-      <li>Je höher dein <b>Bonus</b>, desto breiter ist der Trefferbereich.</li>
-      <li>Je höher der <b>DC</b>, desto kleiner und schneller wird der Trefferbereich.</li>
-      <li>Bei <b>Nachteil</b> ist der Bereich kleiner und bewegt sich schneller.</li>
-    </ol>
+    <p>
+      Eine zufällige Tastenfolge wird abgefragt. Drücke die angezeigten Tasten
+      in der richtigen Reihenfolge, bevor die Zeit abläuft.
+    </p>
+    <ul>
+      <li>Verwendete Tasten: <b>Q, W, E, A, S, D, F</b></li>
+      <li>Höherer <b>Bonus</b> → kürzere Sequenz und/oder mehr Zeit.</li>
+      <li>Höherer <b>DC</b> → längere Sequenz und weniger Zeit.</li>
+      <li>Bei <b>Nachteil</b> gibt es weniger Zeit und ggf. eine längere Sequenz.</li>
+    </ul>
   </section>
 
-  <!-- Minigame-Leiste -->
-  <section class="lp-track-section">
-    <div class="lp-track-labels">
-      <span>Fehlschlag</span>
-      <span>Trefferzone</span>
-      <span>Fehlschlag</span>
-    </div>
-
-    <div class="lp-track">
-      <div class="lp-center"></div>
-      <div class="lp-bar"></div>
+  <!-- Tasten-Sequenz -->
+  <section class="lp-sequence-section">
+    <h2>Tastenfolge</h2>
+    <div class="lp-sequence">
+      {{#each sequence}}
+        <span class="lp-seq-step lp-seq-step--upcoming">{{this}}</span>
+      {{/each}}
     </div>
   </section>
 
