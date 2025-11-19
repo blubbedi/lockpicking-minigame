@@ -22,7 +22,10 @@
     </div>
 
     <div class="lp-timer-row">
-      <span>Zeitlimit:</span>
+      <span>Zeit:</span>
+      <div class="lp-timer-bar">
+        <div class="lp-timer-fill"></div>
+      </div>
       <span class="lp-timer-value">{{timeLimit}} s</span>
     </div>
   </header>
@@ -30,25 +33,35 @@
   <!-- Kurze Anleitung -->
   <section class="lp-instructions">
     <p>
-      Eine zufällige Tastenfolge wird abgefragt. Drücke die angezeigten Tasten
-      in der richtigen Reihenfolge, bevor die Zeit abläuft.
+      Es wird nacheinander eine Tastenfolge abgefragt. Immer <b>eine Taste</b> wird angezeigt,
+      die du drücken musst. Erst nach korrekter Eingabe erscheint die nächste.
     </p>
     <ul>
       <li>Verwendete Tasten: <b>Q, W, E, A, S, D, F</b></li>
-      <li>Höherer <b>Bonus</b> → kürzere Sequenz und/oder mehr Zeit.</li>
-      <li>Höherer <b>DC</b> → längere Sequenz und weniger Zeit.</li>
-      <li>Bei <b>Nachteil</b> gibt es weniger Zeit und ggf. eine längere Sequenz.</li>
+      <li>Höherer <b>Bonus</b> → kürzere Folge und mehr Zeit.</li>
+      <li>Höherer <b>DC</b> → längere Folge und weniger Zeit.</li>
+      <li>Bei <b>Nachteil</b> gibt es weniger Zeit und ggf. eine Taste mehr.</li>
     </ul>
   </section>
 
-  <!-- Tasten-Sequenz -->
+  <!-- Tasten-Sequenz (ohne Spoiler, nur Fortschritt) -->
   <section class="lp-sequence-section">
     <h2>Tastenfolge</h2>
-    <div class="lp-sequence">
-      {{#each sequence}}
-        <span class="lp-seq-step lp-seq-step--upcoming">{{this}}</span>
+
+    <div class="lp-current-key-wrapper">
+      <span class="lp-current-label">Aktuelle Taste:</span>
+      <span class="lp-current-key">?</span>
+    </div>
+
+    <div class="lp-keys-progress">
+      {{#each keySteps}}
+        <span class="lp-key-step lp-key-step--upcoming"></span>
       {{/each}}
     </div>
+
+    <p class="lp-sequence-hint">
+      Du musst insgesamt <b>{{keyCount}}</b> Taste(n) korrekt eingeben, bevor der Balken leer ist.
+    </p>
   </section>
 
   <!-- Fußbereich mit Buttons -->
