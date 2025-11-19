@@ -499,7 +499,7 @@ class LockpickingGameApp extends Application {
     const expected = this.sequence[this.currentIndex];
 
     // Nur Eingaben aus unserem Pool interessieren uns überhaupt
-    const KEY_POOL = ["q", "w", "e", "a", "s", "d", "f"];
+    const KEY_POOL = ["w","a", "s", "d"];
     if (!KEY_POOL.includes(key)) return;
 
     event.preventDefault();
