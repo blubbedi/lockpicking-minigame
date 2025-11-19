@@ -8,10 +8,10 @@
 /* ----------------------------------------- */
 
 const LP_ICON_PATHS = {
-  up: "modules/lockpicking-minigame/icons/arrow-up.svg",
-  down: "modules/lockpicking-minigame/icons/arrow-down.svg",
-  left: "modules/lockpicking-minigame/icons/arrow-left.svg",
-  right: "modules/lockpicking-minigame/icons/arrow-right.svg"
+  up: "modules/lockpicking-minigame/icons/arrow-up.jpg",
+  down: "modules/lockpicking-minigame/icons/arrow-down.jpg",
+  left: "modules/lockpicking-minigame/icons/arrow-left.jpg",
+  right: "modules/lockpicking-minigame/icons/arrow-right.jpg"
 };
 
 const LP_KEYS = ["up", "down", "left", "right"];
