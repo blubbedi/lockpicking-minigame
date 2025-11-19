@@ -1,82 +1,44 @@
-<div class="lp-container">
-
-  <!-- Kopfbereich -->
+<div class="lp-game-root">
   <header class="lp-header">
-    <div class="lp-title-row">
-      <h1>SCHLOSSKNACKEN – QTE</h1>
-    </div>
-
-    <p class="lp-subtitle">
-      {{actorName}} versucht ein Schloss zu knacken.
-    </p>
-
-    <div class="lp-tags">
-      <span class="lp-tag lp-tag-dc">DC: {{dc}}</span>
-      <span class="lp-tag lp-tag-bonus">Bonus: {{bonus}}</span>
-
-      {{#if disadvantage}}
-        <span class="lp-tag lp-tag-bad">mit Nachteil</span>
-      {{else}}
-        <span class="lp-tag lp-tag-good">ohne Nachteil</span>
-      {{/if}}
-    </div>
-
-    <div class="lp-timer-row">
-      <span>Zeit:</span>
-      <div class="lp-timer-bar">
-        <div class="lp-timer-fill"></div>
-      </div>
-      <span class="lp-timer-value">{{timeLimit}} s</span>
+    <h2>Schlossknacken</h2>
+    <div class="lp-subtitle">
+      <span>{{actorName}}</span>
+      <span>– DC {{dc}}, Bonus {{bonus}}{{#if disadvantage}}, mit Nachteil{{/if}}</span>
     </div>
   </header>
 
-  <!-- Kurze Anleitung -->
   <section class="lp-instructions">
     <p>
-      Es wird nacheinander eine Tastenfolge abgefragt. Immer <b>eine Taste</b> wird angezeigt,
-      die du drücken musst. Erst nach korrekter Eingabe erscheint die nächste.
+      Drücke die angezeigte <b>Pfeiltaste</b>, bevor der Zeitbalken leer ist.
+      Du musst alle Eingaben nacheinander korrekt treffen, um das Schloss zu knacken.
     </p>
-    <ul>
-      <li>Verwendete Tasten: <b>Q, W, E, A, S, D, F</b></li>
-      <li>Höherer <b>Bonus</b> → kürzere Folge und mehr Zeit.</li>
-      <li>Höherer <b>DC</b> → längere Folge und weniger Zeit.</li>
-      <li>Bei <b>Nachteil</b> gibt es weniger Zeit und ggf. eine Taste mehr.</li>
-    </ul>
   </section>
 
-  <!-- Tasten-Sequenz (ohne Spoiler, nur Fortschritt) -->
-  <section class="lp-sequence-section">
-    <h2>Tastenfolge</h2>
-
-    <div class="lp-current-key-wrapper">
-      <span class="lp-current-label">Aktuelle Taste:</span>
-      <span class="lp-current-key">?</span>
-    </div>
-
-    <div class="lp-keys-progress">
-      {{#each keySteps}}
-        <span class="lp-key-step lp-key-step--upcoming"></span>
+  <section class="lp-steps-section">
+    <div class="lp-steps-label">Benötigte Eingaben:</div>
+    <div class="lp-steps">
+      {{#each steps}}
+        <div class="lp-step pending"></div>
       {{/each}}
     </div>
-
-    <p class="lp-sequence-hint">
-      Du musst insgesamt <b>{{keyCount}}</b> Taste(n) korrekt eingeben, bevor der Balken leer ist.
-    </p>
   </section>
 
-  <!-- Fußbereich mit Buttons -->
-  <footer class="lp-footer">
-    <button type="button"
-            class="lp-btn lp-btn-primary"
-            data-action="start">
-      Start
-    </button>
+  <section class="lp-qte-section">
+    <div class="lp-timebar-outer">
+      <div class="lp-timebar-inner"></div>
+    </div>
 
-    <button type="button"
-            class="lp-btn lp-btn-secondary"
-            data-action="close">
+    <div class="lp-qte-key-display">
+      <span class="lp-qte-key-label">Bereit?</span>
+    </div>
+  </section>
+
+  <footer class="lp-footer">
+    <button type="button" class="lp-btn lp-btn-primary" data-action="start">
+      Starten
+    </button>
+    <button type="button" class="lp-btn" data-action="close">
       Abbrechen
     </button>
   </footer>
-
 </div>
