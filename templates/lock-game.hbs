@@ -1,51 +1,54 @@
-<form class="lockpicking-game flexcol">
-  <div class="lp-header">
-    <h2>Schlossknacken</h2>
-    <p class="lp-subtitle">
-      {{actorName}} – DC {{dc}}, Bonus {{bonus}}
+<div class="lp-game-root">
+  <h2 class="lp-title">Schlossknacken</h2>
+
+  <div class="lp-meta">
+    <div><b>{{actorName}}</b> versucht ein Schloss zu knacken.</div>
+    <div class="lp-tags-row">
+      <span class="lp-tag lp-tag--dc">DC: {{dc}}</span>
+      <span class="lp-tag lp-tag--bonus">Bonus: {{bonus}}</span>
       {{#if disadvantage}}
-        , <span class="lp-tag lp-tag-bad">mit Nachteil</span>
+        <span class="lp-tag lp-tag--bad">mit Nachteil</span>
       {{else}}
-        , <span class="lp-tag lp-tag-good">ohne Nachteil</span>
+        <span class="lp-tag lp-tag--good">ohne Nachteil</span>
       {{/if}}
+    </div>
+    <p class="lp-expl">
+      Drücke nacheinander die angezeigten Pfeiltasten, bevor der Zeitbalken leer ist.
+      Jede Taste erscheint einzeln. Geschaffte Schritte werden oben als kleine Icons grün markiert.
     </p>
   </div>
 
-  <div class="lp-body">
-    <p class="lp-instructions">
-      Drücke nacheinander die angezeigten
-      <b>Pfeiltasten</b>, bevor der Zeitbalken leer ist.
-      Jede Taste erscheint einzeln. Geschaffte Schritte
-      werden unten als kleine Icons grün markiert.
-    </p>
-
-    <div class="lp-progress-row">
-      <label>Fortschritt:</label>
-      <div class="lp-sequence">
-        {{!-- Icons der bereits geschafften Schritte
-             werden hier vom Script dynamisch eingefügt --}}
-      </div>
-    </div>
-
+  <div class="lp-section">
+    <div class="lp-section-label">Fortschritt:</div>
     <div class="lp-timer-bar">
       <div class="lp-timer-fill"></div>
     </div>
+  </div>
 
-    <div class="lp-current-wrapper">
-      <div class="lp-current-box">
-        <img class="lp-current-icon" src="" alt="">
-      </div>
-      <div class="lp-current-label">Aktuelle Taste</div>
-    </div>
-
-    <div class="lp-status-text">
-      Minispiel wird gestartet …
+  <div class="lp-section">
+    <div class="lp-section-label">Gesamtsequenz:</div>
+    <div class="lp-sequence-steps">
+      {{!-- Platzhalter werden per JS eingefügt --}}
     </div>
   </div>
 
-  <div class="lp-footer">
-    <button type="button" class="lp-btn-cancel" data-action="cancel">
+  <div class="lp-current-key-box">
+    <div class="lp-current-key-icon">
+      <div class="lp-current-key-icon-inner" data-key=""></div>
+    </div>
+    <div class="lp-current-key-label">Aktuelle Taste</div>
+  </div>
+
+  <div class="lp-status-text">
+    Minispiel bereit – klicke »Start«, um zu beginnen.
+  </div>
+
+  <div class="lp-buttons">
+    <button type="button" class="lp-btn lp-btn--primary" data-action="start-game">
+      Start
+    </button>
+    <button type="button" class="lp-btn" data-action="cancel-game">
       Abbrechen
     </button>
   </div>
-</form>
+</div>
