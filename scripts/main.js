@@ -305,6 +305,14 @@ class LockpickingGameApp extends Application {
     this._timerInterval = null;
     this._keyHandler = this._onKeyDown.bind(this);
 
+    // DOM-Refs
+    this._html = null;
+    this._startButton = null;
+    this._timerEl = null;
+    this._timerFillEl = null;
+    this._currentKeyEl = null;
+    this._keyStepsEls = [];
+
     // direkt beim Erzeugen: Sequenz & Zeit basierend auf DC / Bonus berechnen
     this._setupQTEParameters();
   }
@@ -371,13 +379,20 @@ class LockpickingGameApp extends Application {
     const bonus = Number(this.config.bonus ?? 0);
     const disadvantage = !!this.config.disadvantage;
 
+    const keyCount = this.displaySequence.length;
+    const keySteps = [];
+    for (let i = 0; i < keyCount; i++) {
+      keySteps.push({ index: i });
+    }
+
     return {
       actorName: this.actor.name,
       dc,
       bonus,
       disadvantage,
-      sequence: this.displaySequence,
-      timeLimit: this.timeLimit.toFixed(1)
+      timeLimit: this.timeLimit.toFixed(1),
+      keyCount,
+      keySteps
     };
   }
 
@@ -388,10 +403,13 @@ class LockpickingGameApp extends Application {
 
     this._html = html;
     this._startButton = html.find('[data-action="start"]')[0];
-    this._closeButton = html.find('[data-action="close"]')[0];
     this._timerEl = html.find(".lp-timer-value")[0];
-    this._sequenceEl = html.find(".lp-sequence")[0];
+    this._timerFillEl = html.find(".lp-timer-fill")[0];
+    this._currentKeyEl = html.find(".lp-current-key")[0];
+    this._keyStepsEls = html.find(".lp-key-step").toArray();
 
+    // Initialanzeige
+    this._updateTimerDisplay();
     this._renderSequence();
 
     html.find('[data-action="start"]').on("click", this._onStartClick.bind(this));
@@ -402,18 +420,39 @@ class LockpickingGameApp extends Application {
   }
 
   _renderSequence() {
-    if (!this._sequenceEl) return;
-    const steps = this._sequenceEl.querySelectorAll(".lp-seq-step");
-    steps.forEach((el, idx) => {
-      el.classList.toggle("lp-seq-step--done", idx < this.currentIndex);
-      el.classList.toggle("lp-seq-step--active", idx === this.currentIndex);
-      el.classList.toggle("lp-seq-step--upcoming", idx > this.currentIndex);
-    });
+    // kleine Symbole für Anzahl der Tasten
+    if (this._keyStepsEls?.length) {
+      this._keyStepsEls.forEach((el, idx) => {
+        el.classList.toggle("lp-key-step--done", idx < this.currentIndex);
+        el.classList.toggle("lp-key-step--active", idx === this.currentIndex);
+        el.classList.toggle("lp-key-step--upcoming", idx > this.currentIndex);
+      });
+    }
+
+    // aktuelle Taste anzeigen
+    if (this._currentKeyEl) {
+      if (this.finished) {
+        this._currentKeyEl.textContent = "✓";
+      } else if (!this.running) {
+        // vor Start nur Platzhalter
+        this._currentKeyEl.textContent = "?";
+      } else {
+        const key = this.displaySequence[this.currentIndex] ?? "?";
+        this._currentKeyEl.textContent = key;
+      }
+    }
   }
 
   _updateTimerDisplay() {
-    if (!this._timerEl) return;
-    this._timerEl.textContent = this.remainingTime.toFixed(1).replace(".", ",") + " s";
+    if (this._timerEl) {
+      this._timerEl.textContent =
+        this.remainingTime.toFixed(1).replace(".", ",") + " s";
+    }
+
+    if (this._timerFillEl) {
+      const ratio = Math.max(0, Math.min(1, this.remainingTime / this.timeLimit || 1));
+      this._timerFillEl.style.width = `${ratio * 100}%`;
+    }
   }
 
   _startGame() {
@@ -424,10 +463,10 @@ class LockpickingGameApp extends Application {
     this.currentIndex = 0;
     this.remainingTime = this.timeLimit;
     this._updateTimerDisplay();
-    this._renderSequence();
+    this._renderSequence(); // zeigt erste Taste an
 
     if (this._startButton) {
-      this._startButton.textContent = "QTE läuft – drücke die Tastenfolge!";
+      this._startButton.textContent = "QTE läuft – drücke die Taste!";
       this._startButton.disabled = true;
     }
 
@@ -515,7 +554,7 @@ class LockpickingGameApp extends Application {
         ` – falsche Taste gedrückt (erwartet: ${details.expected?.toUpperCase()}, ` +
         `gedrückt: ${details.pressed?.toUpperCase()}).`;
     } else if (details.reason === "completed") {
-      reasonText = " – die komplette Sequenz wurde korrekt eingegeben.";
+      reasonText = " – alle Tasten wurden rechtzeitig korrekt eingegeben.";
     }
 
     const seqString = this.displaySequence.join(" → ");
@@ -523,7 +562,7 @@ class LockpickingGameApp extends Application {
     const flavor =
       `Lockpicking-QTE – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
       `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}.<br>` +
-      `Geforderte Tastenfolge: <code>${seqString}</code><br>` +
+      `Zugrunde liegende Tastenfolge: <code>${seqString}</code><br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>${reasonText}`;
 
     await ChatMessage.create({
