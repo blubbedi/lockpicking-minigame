@@ -1,67 +1,49 @@
 /**
  * Lockpicking Minigame - main.js
- * Foundry VTT v11, dnd5e 4.x
+ * Foundry VTT v11, dnd5e
  */
 
-/* ----------------------------------------- */
-/*  Konstanten                               */
-/* ----------------------------------------- */
-
-const LP_ICON_PATHS = {
-  up: "modules/lockpicking-minigame/icons/arrow-up.jpg",
-  down: "modules/lockpicking-minigame/icons/arrow-down.jpg",
-  left: "modules/lockpicking-minigame/icons/arrow-left.jpg",
-  right: "modules/lockpicking-minigame/icons/arrow-right.jpg"
-};
-
-const LP_KEYS = ["up", "down", "left", "right"];
-const LP_KEY_FROM_EVENT = {
-  ArrowUp: "up",
-  ArrowDown: "down",
-  ArrowLeft: "left",
-  ArrowRight: "right"
-};
+const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
 
 /* ----------------------------------------- */
 /*  Hooks                                    */
 /* ----------------------------------------- */
 
 Hooks.once("init", () => {
-  console.log("lockpicking-minigame | init");
+  console.log(`${LOCKPICKING_NAMESPACE} | init`);
 });
 
 Hooks.once("ready", () => {
-  console.log("lockpicking-minigame | ready");
+  console.log(`${LOCKPICKING_NAMESPACE} | ready`);
 
-  // kleiner Namespace fürs Makro
+  // Namespace für Makros
   game.lockpickingMinigame = {
     openConfig() {
       if (!game.user.isGM) {
         ui.notifications.warn("Nur der Spielleiter kann das Lockpicking-Konfigurationsfenster öffnen.");
         return;
       }
-      console.log("lockpicking-minigame | Öffne Konfig-Dialog");
       new LockpickingConfigApp().render(true);
     }
   };
 
-  // Spieler-Seite: auf Chat-Nachricht des Moduls reagieren
+  // Spieler-seitig auf ChatMessage reagieren und Minigame öffnen
   Hooks.on("createChatMessage", (message) => {
-    const data = message.flags?.["lockpicking-minigame"];
-    if (!data || data.action !== "openGame") return;
+    const data = message.flags?.[LOCKPICKING_NAMESPACE];
+    if (!data) return;
 
-    // Nur der adressierte User öffnet das Minigame
+    // Nur der adressierte User
     if (game.user.id !== data.userId) return;
 
     const actor = game.actors.get(data.actorId);
     if (!actor) {
-      console.warn("lockpicking-minigame | Actor nicht gefunden:", data.actorId);
+      console.warn(`${LOCKPICKING_NAMESPACE} | Actor nicht gefunden:`, data.actorId);
       return;
     }
 
-    console.log("lockpicking-minigame | Minigame wird für User geöffnet:", {
-      userId: data.userId,
+    console.log(`${LOCKPICKING_NAMESPACE} | Öffne Minigame für`, {
       actor: actor.name,
+      user: game.user.name,
       dc: data.dc,
       bonus: data.bonus,
       disadvantage: data.disadvantage
@@ -72,24 +54,77 @@ Hooks.once("ready", () => {
 });
 
 /* ----------------------------------------- */
+/*  Hilfsfunktionen                          */
+/* ----------------------------------------- */
+
+/**
+ * Ermittelt Tool-Proficiency für Diebeswerkzeug.
+ * Gibt { hasTool, profLevel, profMultiplier } zurück.
+ *
+ * profLevel: 0, 0.5, 1, 2 (wie dnd5e)
+ * profMultiplier: 0, 0.5, 1, 2 (zum Rechnen mit Prof-Bonus)
+ */
+function getThievesToolsInfo(actor) {
+  const getProp = foundry.utils.getProperty;
+  let hasTool = false;
+  let profLevel = 0;
+
+  // 1) Über Items nach Diebeswerkzeug suchen
+  const thievesItem = actor.items.find((it) => {
+    const name = (it.name ?? "").toLowerCase();
+    return (
+      it.type === "tool" &&
+      (name.includes("diebes") || name.includes("thieves"))
+    );
+  });
+
+  if (thievesItem) {
+    hasTool = true;
+    // dnd5e: system.proficient = 0, 0.5, 1, 2
+    const p = Number(getProp(thievesItem, "system.proficient") ?? 0);
+    if (!Number.isNaN(p)) profLevel = Math.max(profLevel, p);
+  }
+
+  // 2) Zusätzlich im Actor.system.tools schauen (falls vorhanden)
+  const toolsData = getProp(actor, "system.tools") ?? {};
+  for (const [key, data] of Object.entries(toolsData)) {
+    const label = (data.label ?? "").toLowerCase();
+    if (!label) continue;
+
+    if (label.includes("diebes") || label.includes("thieves")) {
+      hasTool = true;
+      const val = Number(data.value ?? 0);
+      if (!Number.isNaN(val)) profLevel = Math.max(profLevel, val);
+    }
+  }
+
+  // Multiplier für den Prof-Bonus bestimmen
+  let profMultiplier = 0;
+  if (profLevel >= 2) profMultiplier = 2;      // Expertise
+  else if (profLevel >= 1) profMultiplier = 1; // volle Übung
+  else if (profLevel > 0) profMultiplier = 0.5;
+
+  return { hasTool, profLevel, profMultiplier };
+}
+
+/* ----------------------------------------- */
 /*  Konfigurations-Fenster (GM)              */
 /* ----------------------------------------- */
 
 class LockpickingConfigApp extends FormApplication {
   static get defaultOptions() {
-    const options = super.defaultOptions;
-    options.id = "lockpicking-config";
-    options.title = "Schlossknacken";
-    options.template = "modules/lockpicking-minigame/templates/lock-config.hbs";
-    options.width = 420;
-    options.height = "auto";
-    options.classes = ["lockpicking-config"];
-    return options;
+    const opts = super.defaultOptions;
+    opts.id = "lockpicking-config";
+    opts.title = "Schlossknacken";
+    opts.template = "modules/lockpicking-minigame/templates/lock-config.hbs";
+    opts.width = 420;
+    opts.height = "auto";
+    opts.classes = ["lockpicking-config"];
+    return opts;
   }
 
-  /** Daten für das Template */
   getData(options) {
-    // alle aktiven Nicht-GM-User
+    // aktive Nicht-GM-User
     const activeUsers = game.users.contents
       .filter((u) => u.active && !u.isGM)
       .sort((a, b) => a.name.localeCompare(b.name, game.i18n.lang));
@@ -97,7 +132,7 @@ class LockpickingConfigApp extends FormApplication {
     const groups = [];
 
     for (const user of activeUsers) {
-      // alle Charakter-Actors, die der User besitzt
+      // alle Charakter-Actors mit OWNER-Rechten
       const ownedActors = game.actors.contents
         .filter(
           (a) =>
@@ -111,9 +146,9 @@ class LockpickingConfigApp extends FormApplication {
       groups.push({
         userId: user.id,
         userName: user.name,
-        options: ownedActors.map((actor) => ({
-          actorId: actor.id,
-          actorName: actor.name
+        options: ownedActors.map((a) => ({
+          actorId: a.id,
+          actorName: a.name
         }))
       });
     }
@@ -130,9 +165,8 @@ class LockpickingConfigApp extends FormApplication {
     };
   }
 
-  /** Formular-Submit */
   async _updateObject(event, formData) {
-    console.log("lockpicking-minigame | _updateObject aufgerufen:", formData);
+    console.log(`${LOCKPICKING_NAMESPACE} | _updateObject:`, formData);
 
     try {
       const selection = formData.selection;
@@ -149,7 +183,7 @@ class LockpickingConfigApp extends FormApplication {
 
       if (!user || !actor) {
         ui.notifications.error("Ausgewählter Spieler oder Charakter wurde nicht gefunden.");
-        console.warn("lockpicking-minigame | Auswahl fehlerhaft:", {
+        console.warn(`${LOCKPICKING_NAMESPACE} | Auswahl fehlerhaft:`, {
           selection,
           user,
           actor
@@ -159,96 +193,57 @@ class LockpickingConfigApp extends FormApplication {
 
       const getProp = foundry.utils.getProperty;
 
-      /* ----------- Diebeswerkzeug-Item finden ----------- */
+      // --- Tool-Infos ermitteln ---
+      const { hasTool, profLevel, profMultiplier } = getThievesToolsInfo(actor);
 
-      const thievesToolsItem = actor.items.find((it) => {
-        const name = (it.name ?? "").toLowerCase();
-        const typeValue = getProp(it, "system.type.value") ?? "";
-        return (
-          it.type === "tool" &&
-          (
-            name.includes("diebes") ||      // deutsch
-            name.includes("thieves") ||     // englisch
-            typeValue === "thievesTools" ||
-            typeValue === "thief"
-          )
-        );
-      });
-
-      if (!thievesToolsItem) {
+      if (!hasTool) {
         ui.notifications.warn(
           `${actor.name} besitzt keine Diebeswerkzeuge – Schlossknacken nicht möglich.`
         );
-        console.log("lockpicking-minigame | Kein Diebeswerkzeug gefunden für", actor.name);
+        console.log(`${LOCKPICKING_NAMESPACE} | Kein Diebeswerkzeug gefunden für`, actor.name);
         return;
       }
-
-      /* ----------- Werte aus dem Actor holen ----------- */
 
       const dexMod = getProp(actor, "system.abilities.dex.mod") ?? 0;
       const profBonus = getProp(actor, "system.attributes.prof") ?? 0;
 
-      // Versuche, die Tool-Proficiency direkt aus actor.system.tools zu holen
-      const toolsData = getProp(actor, "system.tools") ?? {};
-      let profMultiplier = 0; // 0 = keine, 0.5 = halb, 1 = normal, 2 = Expertise
+      // Deine Logik:
+      // - keine Übung (profMultiplier = 0) => nur Dex, mit Nachteil
+      // - irgendeine Übung (>0)            => Dex + Prof*Multiplier, ohne Nachteil
+      let bonus = dexMod;
+      let disadvantage = true;
 
-      for (const [key, tool] of Object.entries(toolsData)) {
-        const label = (tool.label ?? tool.name ?? "").toLowerCase();
-        if (label.includes("thieves") || label.includes("diebes")) {
-          profMultiplier = Number(tool.value ?? 0);
-          break;
-        }
+      if (profMultiplier > 0) {
+        bonus = dexMod + profBonus * profMultiplier;
+        disadvantage = false;
       }
 
-      // Fallback: wenn dort nichts eingetragen ist, aber das Item existiert,
-      // gehen wir von normaler Proficiency aus
-      if (!profMultiplier && thievesToolsItem) {
-        profMultiplier = 1;
-      }
-
-      const bonus = dexMod + profBonus * profMultiplier;
-      const disadvantage = profMultiplier === 0;
-
-      console.log("lockpicking-minigame | Tool-Info:", {
-        actor: actor.name,
-        user: user.name,
-        toolInfo: {
-          dexMod,
-          profBonus,
-          profMultiplier
-        }
-      });
-
-      /* ----------- Prüfen, ob DC überhaupt erreichbar ist ----------- */
-      const maxRoll = bonus + 20; // W20-Maximalwurf
+      // Check: Kann der DC überhaupt erreicht werden? (max Wurf = bonus + 20)
+      const maxRoll = bonus + 20;
       if (maxRoll < dc) {
-        const content =
-          `Lockpicking: <b>${actor.name}</b> hat keine Chance, dieses Schloss zu knacken. ` +
-          `(DC ${dc}, maximal möglicher Wert ${maxRoll}).`;
-
-        await ChatMessage.create({
-          content,
-          speaker: { alias: "Lockpicking" }
-        });
-
         ui.notifications.warn(
-          `${actor.name} kann diesen Schwierigkeitsgrad selbst mit einem natürlichen 20 nicht erreichen.`
+          `${actor.name} könnte selbst mit einem natürlichen 20 den DC ${dc} nicht schaffen (max. ${maxRoll}). Schlossknacken nicht sinnvoll.`
         );
+        console.log(`${LOCKPICKING_NAMESPACE} | Minigame nicht gestartet – DC zu hoch`, {
+          actor: actor.name,
+          dc,
+          bonus,
+          maxRoll
+        });
         return;
       }
 
-      console.log("lockpicking-minigame | Berechnete Werte:", {
+      console.log(`${LOCKPICKING_NAMESPACE} | Berechnete Werte:`, {
         actor: actor.name,
         user: user.name,
         dc,
         dexMod,
         profBonus,
+        profLevel,
         profMultiplier,
         bonus,
         disadvantage
       });
-
-      /* ----------- Chat-Nachricht + Flag fürs Minigame ----------- */
 
       const content =
         `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
@@ -258,7 +253,7 @@ class LockpickingConfigApp extends FormApplication {
         content,
         speaker: { alias: "Lockpicking" },
         flags: {
-          "lockpicking-minigame": {
+          [LOCKPICKING_NAMESPACE]: {
             action: "openGame",
             userId,
             actorId,
@@ -269,35 +264,35 @@ class LockpickingConfigApp extends FormApplication {
         }
       });
 
-      console.log("lockpicking-minigame | ChatMessage mit Flags erstellt.");
+      console.log(`${LOCKPICKING_NAMESPACE} | ChatMessage mit Flags erstellt.`);
     } catch (err) {
-      console.error("lockpicking-minigame | Fehler in _updateObject:", err);
+      console.error(`${LOCKPICKING_NAMESPACE} | Fehler in _updateObject:`, err);
       ui.notifications.error("Beim Start des Lockpicking-Minispiels ist ein Fehler aufgetreten. Siehe Konsole.");
     }
   }
 }
 
 /* ----------------------------------------- */
-/*  Quick-Time-Minispiel (Spieler)           */
+/*  Minigame-Fenster (Quick-Time-Event)      */
 /* ----------------------------------------- */
 
 class LockpickingGameApp extends Application {
   constructor(actor, config, options = {}) {
     super(options);
     this.actor = actor;
-    this.config = config; // { dc, bonus, disadvantage }
+    this.config = config; // { dc, bonus, disadvantage, ... }
 
-    // Game-Status
-    this.sequence = [];      // interne Reihenfolge (z.B. ["up","left",...])
-    this.currentIndex = 0;   // wie viele bereits korrekt gedrückt
+    // QTE-Status
+    this.sequence = [];
+    this.currentIndex = 0;
     this.totalTimeMs = 0;
-    this.startTime = null;
-    this.running = false;
+    this.remainingMs = 0;
+    this.gameStarted = false;
     this.finished = false;
-    this.failed = false;
 
-    this._timerFrame = null;
-    this._onKeyDown = this._handleKeyDown.bind(this);
+    this._raf = null;
+    this._lastTs = null;
+    this._keyHandler = this._onKeyDown.bind(this);
   }
 
   static get defaultOptions() {
@@ -313,238 +308,244 @@ class LockpickingGameApp extends Application {
   }
 
   getData(options) {
+    const { dc, bonus, disadvantage } = this.config;
+
     return {
       actorName: this.actor.name,
-      dc: this.config.dc,
-      bonus: this.config.bonus,
-      disadvantage: this.config.disadvantage
+      dc,
+      bonus,
+      disadvantage
     };
   }
 
-  /* ------------ Setup & Listener --------------------- */
+  /** Hilfsfunktion – Sequenz erzeugen */
+  _generateSequence(length) {
+    const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    const seq = [];
+    for (let i = 0; i < length; i++) {
+      const k = keys[Math.floor(Math.random() * keys.length)];
+      seq.push(k);
+    }
+    return seq;
+  }
+
+  /** Zeit & Länge aus DC / Bonus grob bestimmen */
+  _setupDifficulty() {
+    const { dc, bonus, disadvantage } = this.config;
+
+    const diff = Math.max(0, dc - bonus); // je größer, desto schwerer
+    // Basissequenz: 3–8 Schritte
+    let steps = 3 + Math.floor(dc / 4);
+    steps += Math.floor(diff / 4);
+    steps = Math.max(3, Math.min(8, steps));
+
+    // Basiszeit: 7 Sekunden + 0,9s pro Schritt
+    let totalMs = 7000 + steps * 900;
+
+    // bei höherem Bonus wird's etwas entspannter
+    totalMs += bonus * 150;
+
+    // Nachteil: insgesamt weniger Zeit
+    if (disadvantage) totalMs *= 0.75;
+    else totalMs *= 1.05;
+
+    this.sequence = this._generateSequence(steps);
+    this.totalTimeMs = Math.round(totalMs);
+    this.remainingMs = this.totalTimeMs;
+
+    console.log(`${LOCKPICKING_NAMESPACE} | QTE-Setup:`, {
+      steps,
+      sequence: this.sequence,
+      totalTimeMs: this.totalTimeMs
+    });
+  }
 
   activateListeners(html) {
     super.activateListeners(html);
 
     this._html = html;
-    this._sequenceContainer = html.find(".lp-sequence")[0];
     this._timerFill = html.find(".lp-timer-fill")[0];
-    this._currentIcon = html.find(".lp-current-icon")[0];
+    this._sequenceContainer = html.find(".lp-sequence-steps")[0];
+    this._currentKeyIcon = html.find(".lp-current-key-icon-inner")[0];
     this._statusText = html.find(".lp-status-text")[0];
+    this._startButton = html.find('[data-action="start-game"]')[0];
+    this._cancelButton = html.find('[data-action="cancel-game"]')[0];
 
-    html.find('[data-action="cancel"]').on("click", (ev) => {
-      ev.preventDefault();
-      this._finish(false, "Abgebrochen");
-    });
+    if (this._startButton) {
+      this._startButton.addEventListener("click", this._onClickStart.bind(this));
+    }
+    if (this._cancelButton) {
+      this._cancelButton.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        this._finish(false, "Abgebrochen.");
+      });
+    }
 
-    // Minispiel vorbereiten & starten
-    this._prepareGame();
-    this._startGame();
+    // Tastatur erst nach Start auswerten
+    document.addEventListener("keydown", this._keyHandler);
+
+    // Anfangszustand
+    if (this._statusText) {
+      this._statusText.textContent = "Bereit – klicke »Start«, um zu beginnen.";
+    }
   }
 
-  async close(options) {
-    this._stopTimer();
-    window.removeEventListener("keydown", this._onKeyDown);
+  /** Aufräumen */
+  close(options) {
+    document.removeEventListener("keydown", this._keyHandler);
+    if (this._raf) cancelAnimationFrame(this._raf);
     return super.close(options);
   }
 
-  /* ------------ Spielparameter ----------------------- */
+  /** Start-Button */
+  _onClickStart(event) {
+    event.preventDefault();
+    if (this.gameStarted || this.finished) return;
 
-  _prepareGame() {
-    const { dc, bonus, disadvantage } = this.config;
-
-    const diff = Math.max(0, dc - bonus);
-
-    // Länge der Sequenz (3–8 Schritte)
-    let steps = 3 + Math.floor(diff / 3);
-    steps = Math.min(8, Math.max(3, steps));
-
-    // Gesamtzeit (in Sekunden) – hier kannst du später leicht anpassen
-    let baseTime = 10;              // Grundzeit
-    baseTime += Math.max(0, (bonus - diff) * 0.2); // guter Skill → etwas mehr Zeit
-    baseTime -= diff * 0.1;         // hoher DC → etwas weniger Zeit
-    if (disadvantage) baseTime *= 0.8; // Nachteil → etwas straffer
-
-    baseTime = Math.min(18, Math.max(6, baseTime)); // Clamp
-    this.totalTimeMs = baseTime * 1000;
-
-    // Zufällige Sequenz erzeugen
-    this.sequence = [];
-    for (let i = 0; i < steps; i++) {
-      const k = LP_KEYS[Math.floor(Math.random() * LP_KEYS.length)];
-      this.sequence.push(k);
-    }
+    this._setupDifficulty();
+    this._renderSequencePlaceholders();
     this.currentIndex = 0;
+    this._updateCurrentKeyIcon();
 
-    console.log("lockpicking-minigame | QTE-Setup:", {
-      dc,
-      bonus,
-      disadvantage,
-      steps: this.sequence.length,
-      totalTimeSeconds: baseTime,
-      sequenceInternal: this.sequence
-    });
-  }
-
-  _startGame() {
-    if (this.running) return;
-    this.running = true;
+    this.gameStarted = true;
     this.finished = false;
-    this.failed = false;
-
-    this._updateCurrentIcon();
-    this.startTime = performance.now();
-    this._updateTimer();
-
-    window.addEventListener("keydown", this._onKeyDown);
+    this._lastTs = null;
 
     if (this._statusText) {
       this._statusText.textContent = "Minispiel läuft – drücke die angezeigten Pfeiltasten.";
     }
-  }
-
-  /* ------------ Anzeige aktueller Schritt ------------ */
-
-  _updateCurrentIcon() {
-    if (!this._currentIcon) return;
-
-    if (this.currentIndex >= this.sequence.length) {
-      this._currentIcon.src = "";
-      this._currentIcon.alt = "";
-      return;
+    if (this._startButton) {
+      this._startButton.disabled = true;
+      this._startButton.textContent = "Läuft...";
     }
 
+    this._raf = requestAnimationFrame(this._tick.bind(this));
+  }
+
+  /** Zeichnet graue Platzhalter für die Gesamtsequenz */
+  _renderSequencePlaceholders() {
+    if (!this._sequenceContainer) return;
+    this._sequenceContainer.innerHTML = "";
+
+    this.sequence.forEach((key, index) => {
+      const step = document.createElement("div");
+      step.classList.add("lp-sequence-step", "lp-sequence-step--pending");
+      step.dataset.index = String(index);
+
+      const icon = document.createElement("div");
+      icon.classList.add("lp-sequence-step-icon");
+      icon.dataset.key = key;
+
+      step.appendChild(icon);
+      this._sequenceContainer.appendChild(step);
+    });
+  }
+
+  /** setzt das Icon für die aktuelle Taste */
+  _updateCurrentKeyIcon() {
+    if (!this._currentKeyIcon) return;
     const key = this.sequence[this.currentIndex];
-    const src = LP_ICON_PATHS[key] ?? "";
-    this._currentIcon.src = src;
-
-    let label = "";
-    switch (key) {
-      case "up": label = "↑"; break;
-      case "down": label = "↓"; break;
-      case "left": label = "←"; break;
-      case "right": label = "→"; break;
-    }
-    this._currentIcon.alt = label;
+    this._currentKeyIcon.dataset.key = key || "";
   }
 
-  /* ------------ Timer / Fortschritt ------------------ */
+  /** Timer-Animation */
+  _tick(ts) {
+    if (!this.gameStarted || this.finished) return;
 
-  _updateTimer() {
-    if (!this.running || this.finished) return;
-
-    const now = performance.now();
-    const elapsed = now - this.startTime;
-    const ratio = Math.min(1, elapsed / this.totalTimeMs);
-
-    if (this._timerFill) {
-      const remaining = 1 - ratio;
-      this._timerFill.style.width = `${remaining * 100}%`;
-
-      // Farbverlauf grob: grün → gelb → rot
-      if (remaining > 0.5) {
-        this._timerFill.style.backgroundColor = "#4caf50";
-      } else if (remaining > 0.25) {
-        this._timerFill.style.backgroundColor = "#ffc107";
-      } else {
-        this._timerFill.style.backgroundColor = "#f44336";
-      }
+    if (this._lastTs === null) {
+      this._lastTs = ts;
+    } else {
+      const dt = ts - this._lastTs;
+      this._lastTs = ts;
+      this.remainingMs -= dt;
+      if (this.remainingMs < 0) this.remainingMs = 0;
     }
 
-    if (ratio >= 1) {
+    // Timer-Balken aktualisieren
+    if (this._timerFill) {
+      const pct = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) * 100 : 0;
+      this._timerFill.style.width = `${pct}%`;
+    }
+
+    if (this.remainingMs <= 0) {
       this._finish(false, "Die Zeit ist abgelaufen.");
       return;
     }
 
-    this._timerFrame = requestAnimationFrame(this._updateTimer.bind(this));
+    this._raf = requestAnimationFrame(this._tick.bind(this));
   }
 
-  _stopTimer() {
-    if (this._timerFrame) cancelAnimationFrame(this._timerFrame);
-    this._timerFrame = null;
-  }
+  /** Tastatur-Handler */
+  _onKeyDown(event) {
+    if (!this.gameStarted || this.finished) return;
 
-  /* ------------ Tasteneingaben ----------------------- */
+    const validKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    if (!validKeys.includes(event.key)) return;
 
-  _handleKeyDown(event) {
-    if (!this.running || this.finished) return;
-
-    const expectedKey = this.sequence[this.currentIndex];
-    const pressed = LP_KEY_FROM_EVENT[event.key];
-
-    // andere Tasten ignorieren
-    if (!pressed) return;
-
+    // verhindern, dass die Szene scrollt
     event.preventDefault();
 
-    if (pressed !== expectedKey) {
+    const expected = this.sequence[this.currentIndex];
+    if (event.key !== expected) {
       this._finish(false, "Falsche Taste gedrückt.");
       return;
     }
 
-    // Richtige Taste → Schritt erfolgreich
-    this._markStepAsDone(expectedKey);
+    // Schritt erfolgreich
+    this._markStepSuccess(this.currentIndex);
     this.currentIndex++;
 
     if (this.currentIndex >= this.sequence.length) {
       this._finish(true, "Alle Tasten korrekt gedrückt.");
     } else {
-      this._updateCurrentIcon();
+      this._updateCurrentKeyIcon();
     }
   }
 
-  _markStepAsDone(key) {
+  _markStepSuccess(index) {
     if (!this._sequenceContainer) return;
-
-    const div = document.createElement("div");
-    div.classList.add("lp-seq-step", "done");
-
-    const img = document.createElement("img");
-    img.classList.add("lp-seq-icon");
-    img.src = LP_ICON_PATHS[key] ?? "";
-    img.alt = "";
-
-    div.appendChild(img);
-    this._sequenceContainer.appendChild(div);
+    const el = this._sequenceContainer.querySelector(
+      `.lp-sequence-step[data-index="${index}"]`
+    );
+    if (!el) return;
+    el.classList.remove("lp-sequence-step--pending");
+    el.classList.add("lp-sequence-step--success");
   }
 
-  /* ------------ Abschluss & Chat-Ausgabe ------------- */
-
+  /** Abschluss + Chat-Ausgabe */
   async _finish(success, reason) {
     if (this.finished) return;
     this.finished = true;
-    this.running = false;
-    this.failed = !success;
+    this.gameStarted = false;
 
-    this._stopTimer();
-    window.removeEventListener("keydown", this._onKeyDown);
+    if (this._raf) cancelAnimationFrame(this._raf);
+    this._raf = null;
 
     if (this._statusText) {
       this._statusText.textContent = success
-        ? "Erfolg! Du knackst das Schloss."
+        ? "Schloss geknackt!"
         : `Fehlschlag: ${reason}`;
     }
 
     const { dc, bonus, disadvantage } = this.config;
-    const steps = this.sequence.length;
 
-    const flavor =
+    const content =
       `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
       `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}.<br>` +
-      `Quick-Time-Event mit ${steps} Eingaben (Pfeiltasten).<br>` +
-      (reason ? `Hinweis: ${reason}<br>` : "") +
+      `Quick-Time-Event mit ${this.sequence.length} Eingaben (Pfeiltasten).<br>` +
+      `Hinweis: ${reason}<br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>.`;
 
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-      content: flavor
+      content
     });
 
-    ui.notifications[success ? "info" : "warn"](
-      success ? "Du knackst das Schloss!" : "Das Schloss widersteht deinem Versuch."
-    );
+    if (this._startButton) {
+      this._startButton.disabled = true;
+    }
 
-    // Fenster offen lassen, damit man den Status lesen kann
-    // → der Spieler kann es selbst schließen
+    // Fenster nach kurzer Zeit automatisch schließen
+    setTimeout(() => this.close(), 1500);
   }
 }
