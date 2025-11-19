@@ -1,339 +1,66 @@
-/* Grundlayout */
-
-.lockpicking-config .form-group,
-.lockpicking-game .form-group {
-  margin-bottom: 8px;
-}
-
-/* Minigame-Leiste */
-
-.lp-track {
-  position: relative;
-  width: 100%;
-  height: 32px;
-  margin: 10px 0 6px 0;
-  border: 1px solid #888;
-  border-radius: 4px;
-  background: #222;
-  overflow: hidden;
-}
-
-.lp-center-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.lp-target {
-  position: absolute;
-  left: 50%;
-  top: 2px;
-  height: 28px;
-  margin-left: -15%;
-  border-radius: 3px;
-  background: rgba(0, 200, 0, 0.4);
-}
-
-.lp-indicator {
-  position: absolute;
-  top: 2px;
-  width: 10%;
-  height: 28px;
-  border-radius: 3px;
-  background: rgba(200, 200, 0, 0.8);
-}
-
-/* Text */
-
-.lockpicking-game .hint {
-  font-size: 0.85rem;
-  opacity: 0.9;
-}
-.lockpicking-game {
-  padding: 8px;
-}
-
-.lp-track-wrapper {
-  margin: 8px 0 12px;
-}
-
-.lp-track {
-  position: relative;
-  width: 100%;
-  height: 24px;
-  background: #222;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
-}
-
-.lp-center {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  left: 50%;
-  margin-left: -1px;
-  background: #ffd700;
-  opacity: 0.9;
-}
-
-.lp-bar {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  width: 25%;
-  border-radius: 10px;
-  background: linear-gradient(to right, #4caf50, #81c784);
-  box-shadow: 0 0 6px rgba(0,0,0,0.7);
-  transition: none;
-}
-
-.lp-hint {
-  font-size: 0.8rem;
-  margin-top: 4px;
-  color: #ccc;
-}
-/* ========================================= */
-/* Lockpicking Minigame – UI Styling        */
-/* ========================================= */
-
-.lockpicking-game {
-  padding: 0.75rem 0.9rem 0.9rem;
-  background: radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 60%),
-              linear-gradient(145deg, #14161c, #090a0e);
-  box-shadow: 0 0 15px rgba(0,0,0,0.8);
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.08);
-  color: var(--color-text-light-1, #f5f5f5);
-}
-
-/* -------- Header -------- */
-
-.lockpicking-game .lp-header {
+.lockpicking-game .lp-timer-row {
   display: flex;
-  gap: 0.75rem;
   align-items: center;
-  margin-bottom: 0.6rem;
+  gap: 0.5rem;
 }
 
-.lockpicking-game .lp-icon {
-  width: 34px;
-  height: 34px;
+.lockpicking-game .lp-timer-bar {
+  flex: 1;
+  height: 8px;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.lockpicking-game .lp-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #4caf50, #ffc107, #f44336);
+  transition: width 0.1s linear;
+}
+
+.lockpicking-game .lp-current-key-wrapper {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 30% 20%, #ffd66b, #b87b1d);
-  color: #20140c;
-  box-shadow: 0 0 8px rgba(255, 203, 96, 0.5);
-  flex-shrink: 0;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
-.lockpicking-game .lp-icon i {
-  font-size: 18px;
-}
-
-.lockpicking-game .lp-title-block h2 {
-  margin: 0 0 0.15rem;
-  font-size: 1.1rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.lockpicking-game .lp-title-block p {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.3;
-  color: var(--color-text-dark-4, #d0d0d0);
-}
-
-/* Tags für DC / Bonus / (Nachteil) */
-
-.lockpicking-game .lp-tag {
+.lockpicking-game .lp-current-key {
   display: inline-flex;
   align-items: center;
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  margin-left: 0.15rem;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.35);
+  justify-content: center;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(0,0,0,0.4);
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
-.lockpicking-game .lp-tag-dc {
-  border-color: #ffda7a;
-  color: #ffda7a;
-}
-
-.lockpicking-game .lp-tag-bonus {
-  border-color: #7af0ff;
-  color: #7af0ff;
-}
-
-.lockpicking-game .lp-tag-disadv {
-  border-color: #ff6b6b;
-  color: #ffb3b3;
-}
-
-.lockpicking-game .lp-tag-adv {
-  border-color: #6bff8c;
-  color: #b9ffce;
-}
-
-/* -------- Body / Anleitung -------- */
-
-.lockpicking-game .lp-body {
+.lockpicking-game .lp-keys-progress {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-.lockpicking-game .lp-instructions {
-  background: rgba(255,255,255,0.02);
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 0.4rem 0.55rem;
-}
-
-.lockpicking-game .lp-instructions ol {
-  margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.78rem;
-  line-height: 1.3;
-  color: var(--color-text-dark-4, #d0d0d0);
-}
-
-/* -------- Track / Minigame -------- */
-
-.lockpicking-game .lp-track-wrapper {
-  margin-top: 0.15rem;
-}
-
-.lockpicking-game .lp-track {
-  position: relative;
-  width: 100%;
-  height: 26px;
+.lockpicking-game .lp-key-step {
+  width: 0.6rem;
+  height: 0.6rem;
   border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: radial-gradient(circle at 50% 50%, #161925, #06070b);
-  box-shadow:
-    inset 0 0 10px rgba(0,0,0,0.9),
-    0 0 10px rgba(0,0,0,0.7);
+  background: rgba(255,255,255,0.15);
 }
 
-.lockpicking-game .lp-track-bg {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(
-    90deg,
-    rgba(255,255,255,0.03) 0%,
-    transparent 10%,
-    transparent 90%,
-    rgba(255,255,255,0.03) 100%
-  );
-  pointer-events: none;
+.lockpicking-game .lp-key-step--active {
+  background: #ffeb3b;
 }
 
-.lockpicking-game .lp-center {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 3px;
-  border-radius: 999px;
-  background: linear-gradient(to bottom, #ffd66b, #ff9f1c);
-  box-shadow:
-    0 0 4px rgba(255,214,107,0.9),
-    0 0 10px rgba(255,214,107,0.7);
-  opacity: 0.95;
+.lockpicking-game .lp-key-step--done {
+  background: #4caf50;
 }
 
-/* Der bewegte Balken (Trefferbereich) */
-
-.lockpicking-game .lp-bar {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  /* left & width werden dynamisch durch JS gesetzt */
-  border-radius: 999px;
-  background: linear-gradient(90deg, #20e0ff, #7cffc7);
-  box-shadow:
-    0 0 8px rgba(124,255,199,0.8),
-    0 0 12px rgba(32,224,255,0.6);
-  opacity: 0.9;
+.lockpicking-game .lp-key-step--upcoming {
+  background: rgba(255,255,255,0.15);
 }
-
-/* Scale-Beschriftung unter dem Track */
-
-.lockpicking-game .lp-track-legend {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  margin-top: 0.25rem;
-  color: rgba(255,255,255,0.5);
-}
-
-.lockpicking-game .lp-track-legend span {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* -------- Footer / Buttons -------- */
-
-.lockpicking-game .lp-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
-}
-
-.lockpicking-game .lp-btn {
-  font-size: 0.8rem;
-  padding: 0.25rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 120ms ease, transform 80ms ease, box-shadow 120ms ease, border-color 120ms ease;
-}
-
-.lockpicking-game .lp-btn-primary {
-  background: linear-gradient(135deg, #20e0ff, #7cffc7);
-  color: #041015;
-  border-color: rgba(0,0,0,0.6);
-  box-shadow: 0 0 8px rgba(32,224,255,0.4);
-}
-
-.lockpicking-game .lp-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 12px rgba(32,224,255,0.6);
-}
-
-.lockpicking-game .lp-btn-primary:active {
-  transform: translateY(0px) scale(0.98);
-  box-shadow: 0 0 5px rgba(32,224,255,0.4);
-}
-
-.lockpicking-game .lp-btn-ghost {
-  background: transparent;
-  color: rgba(255,255,255,0.75);
-  border-color: rgba(255,255,255,0.18);
-}
-
-.lockpicking-game .lp-btn-ghost:hover {
-  background: rgba(255,255,255,0.05);
-}
-
-/* Kleine Anpassung für sehr kleine Fenster */
-.lockpicking-game .window-content {
-  padding: 0 !important;
-}
-
-
