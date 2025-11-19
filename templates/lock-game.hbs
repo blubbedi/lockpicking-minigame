@@ -9,16 +9,18 @@
 
   <section class="lp-instructions">
     <p>
-      Drücke die angezeigte <b>Pfeiltaste</b>, bevor der Zeitbalken leer ist.
-      Du musst alle Eingaben nacheinander korrekt treffen, um das Schloss zu knacken.
+      Drücke nacheinander die angezeigten <b>Pfeiltasten</b>, bevor der Zeitbalken leer ist.
+      Jede Taste wird einzeln abgefragt. Geschaffte Schritte werden grün markiert.
     </p>
   </section>
 
   <section class="lp-steps-section">
-    <div class="lp-steps-label">Benötigte Eingaben:</div>
+    <div class="lp-steps-label">Gesamte Sequenz:</div>
     <div class="lp-steps">
       {{#each steps}}
-        <div class="lp-step pending"></div>
+        <div class="lp-step pending" data-step="{{index}}">
+          <span class="lp-step-label">{{label}}</span>
+        </div>
       {{/each}}
     </div>
   </section>
@@ -29,7 +31,12 @@
     </div>
 
     <div class="lp-qte-key-display">
-      <span class="lp-qte-key-label">Bereit?</span>
+      <div class="lp-qte-key-box">
+        <span class="lp-qte-key-label">Bereit?</span>
+      </div>
+      <div class="lp-qte-key-hint">
+        Aktuelle Taste
+      </div>
     </div>
   </section>
 
