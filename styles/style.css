@@ -1,79 +1,189 @@
-.lockpicking-game .lp-steps {
+/******************************************************
+ *  Lockpicking Minigame – Stylesheet (komplett)
+ ******************************************************/
+
+.lockpicking-game {
+  padding: 6px 10px 10px;
+  font-family: var(--font-primary);
+}
+
+/* ----------------------------------------- */
+/* Header                                    */
+/* ----------------------------------------- */
+
+.lockpicking-game .lp-header h2 {
+  margin: 0 0 2px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.lockpicking-game .lp-subtitle {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.lp-tag {
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lp-tag-good {
+  background: #c8f7c5;
+  color: #095b2c;
+}
+
+.lp-tag-bad {
+  background: #ffd0d0;
+  color: #7d1111;
+}
+
+/* ----------------------------------------- */
+/* Body / Instructions                       */
+/* ----------------------------------------- */
+
+.lockpicking-game .lp-body {
+  margin-top: 4px;
+}
+
+.lp-instructions {
+  font-size: 12px;
+  margin-bottom: 10px;
+  line-height: 1.3;
+  color: #444;
+}
+
+/* ----------------------------------------- */
+/* Fortschrittsleiste (Schritte)             */
+/* ----------------------------------------- */
+
+.lp-progress-row {
   display: flex;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.lp-progress-row label {
+  font-size: 11px;
+  color: #555;
+  min-width: 70px;
+}
+
+.lp-sequence {
+  display: flex;
+  gap: 4px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
-.lockpicking-game .lp-step {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+.lp-seq-step {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: #ddd;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  border: 1px solid #666;
-  background: #222;
-  color: #ccc;
-  box-shadow: 0 0 4px rgba(0,0,0,0.5);
-  transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
+  border: 1px solid #aaa;
 }
 
-.lockpicking-game .lp-step.pending {
-  opacity: 0.6;
+.lp-seq-step.done {
+  background: #4caf50;
+  border-color: #3e8e41;
 }
 
-.lockpicking-game .lp-step.active {
-  background: #444;
-  color: #fff;
-  transform: scale(1.15);
-  box-shadow: 0 0 6px rgba(255,255,255,0.4);
+.lp-seq-icon {
+  width: 16px;
+  height: 16px;
 }
 
-.lockpicking-game .lp-step.done {
-  background: #1f6f2f;
-  color: #fff;
-  opacity: 0.9;
-}
+/* ----------------------------------------- */
+/* Timer-Bar                                 */
+/* ----------------------------------------- */
 
-.lockpicking-game .lp-qte-key-display {
-  margin-top: 1rem;
-  text-align: center;
-}
-
-.lockpicking-game .lp-qte-key-box {
-  display: inline-flex;
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.2rem;
-  font-weight: bold;
-  border: 2px solid #ffd26f;
-  background: #33250f;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6);
-}
-
-.lockpicking-game .lp-qte-key-hint {
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
-.lockpicking-game .lp-timebar-outer {
+.lp-timer-bar {
   width: 100%;
   height: 10px;
-  border-radius: 6px;
-  background: #333;
+  background: #303030;
+  border-radius: 5px;
+  margin: 10px 0 14px;
   overflow: hidden;
-  margin-top: 0.5rem;
+  border: 1px solid #444;
 }
 
-.lockpicking-game .lp-timebar-inner {
-  width: 100%;
+.lp-timer-fill {
   height: 100%;
-  background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
-  transition: width 0.05s linear;
+  width: 100%;
+  background: #4caf50;
+  transition: width 0.03s linear;
+}
+
+/* ----------------------------------------- */
+/* Aktuelle Taste                            */
+/* ----------------------------------------- */
+
+.lp-current-wrapper {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.lp-current-box {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 4px;
+  border-radius: 8px;
+  background: #f4f4f4;
+  border: 3px solid #c8c8c8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.15);
+}
+
+.lp-current-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.lp-current-label {
+  font-size: 11px;
+  color: #555;
+}
+
+/* ----------------------------------------- */
+/* Status-Text                               */
+/* ----------------------------------------- */
+
+.lp-status-text {
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: center;
+  color: #444;
+  font-weight: 500;
+}
+
+/* ----------------------------------------- */
+/* Footer / Buttons                          */
+/* ----------------------------------------- */
+
+.lp-footer {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.lp-btn-cancel {
+  padding: 4px 14px;
+  font-size: 12px;
+  border-radius: 5px;
+  background: #e5e5e5;
+  border: 1px solid #bbb;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.lp-btn-cancel:hover {
+  background: #d6d6d6;
 }
