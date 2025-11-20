@@ -65,19 +65,20 @@ Hooks.once("ready", () => {
 /* ========================================================================== */
 
 /**
- * Bestimmt, ob ein Actor Thieves’ Tools besitzt, geübt ist oder Expertise hat.
+ * Bestimmt, ob ein Actor Thieves’ Tools besitzt und wie der Bonus aussehen soll.
  *
  * Logik:
- *  - Kein Tool       -> kein Lockpicking
- *  - Tool, keine Übung -> Lockpicking mit Nachteil, Bonus = nur DEX
- *  - Tool + Übung    -> ohne Nachteil, Bonus = DEX + Prof
- *  - Tool + Expertise-> ohne Nachteil, Bonus = DEX + 2*Prof
+ *  - Kein Tool (weder Inventar noch system.tools)   -> kein Lockpicking
+ *  - Tool NUR im Inventar, kein Eintrag in system.tools
+ *      -> Lockpicking mit Nachteil, Bonus = nur DEX
+ *  - Tool + Proficiency in system.tools (mit fertigem mod/total/value)
+ *      -> ohne Nachteil, Bonus = dieser fertige Modifikator (z.B. +9)
  *
  * Ergebnis:
  * {
  *   hasTool: bool,
- *   proficient: bool,
- *   expert: bool,
+ *   proficient: bool,   // nur heuristisch, Info-Zweck
+ *   expert: bool,       // nur heuristisch, Info-Zweck
  *   totalBonus: number,
  *   disadvantage: bool
  * }
@@ -88,56 +89,39 @@ function getThievesToolsInfo(actor) {
   const dexMod = Number(getProp(actor, "system.abilities.dex.mod") ?? 0);
   const profBonus = Number(getProp(actor, "system.attributes.prof") ?? 0);
 
-  let hasTool = false;
-  let proficient = false;
-  let expert = false;
-
-  /* -------------------------------------------------------
-   * 1) TOOL IM INVENTAR (Items)
-   * ------------------------------------------------------- */
-
+  // 1) Hat der Actor Thieves’ Tools im Inventar?
+  let hasToolInventory = false;
   const invTool = actor.items.find((it) => {
     const name = (it.name ?? "").toLowerCase();
     return it.type === "tool" && (name.includes("thieves") || name.includes("diebes"));
   });
+  if (invTool) hasToolInventory = true;
 
-  if (invTool) {
-    hasTool = true;
-
-    // dnd5e: system.proficient = 0, 0.5, 1, 2
-    const p = Number(getProp(invTool, "system.proficient") ?? 0);
-    if (p >= 2) expert = true;
-    else if (p >= 1) proficient = true;
-  }
-
-  /* -------------------------------------------------------
-   * 2) TOOL-PROFICIENCY IM ACTOR (system.tools)
-   * ------------------------------------------------------- */
-
+  // 2) Gibt es einen Werkzeugeintrag in actor.system.tools?
   const toolsData = getProp(actor, "system.tools") ?? {};
+  let hasToolProficiency = false;
+  let toolsMod = null;
+
   for (const data of Object.values(toolsData)) {
     const label = (data.label ?? "").toLowerCase();
     if (!label || (!label.includes("thieves") && !label.includes("diebes"))) continue;
 
-    hasTool = true;
+    hasToolProficiency = true;
 
-    const raw = data.prof ?? data.proficient ?? data.value ?? 0;
-    const val = Number(raw);
-
-    if (!Number.isNaN(val)) {
-      if (val >= 2) expert = true;
-      else if (val >= 1) proficient = true;
-    } else if (typeof raw === "boolean" && raw) {
-      proficient = true;
-    } else if (typeof raw === "string" && raw !== "" && raw !== "0") {
-      proficient = true;
+    // dnd5e speichert üblicherweise einen fertigen Modifikator in mod / total / value
+    const modCandidates = [data.mod, data.total, data.value];
+    for (const c of modCandidates) {
+      if (typeof c === "number" && !Number.isNaN(c)) {
+        toolsMod = c;
+        break;
+      }
     }
+    if (toolsMod !== null) break;
   }
 
-  /* -------------------------------------------------------
-   * 3) KEIN TOOL → kein Lockpicking
-   * ------------------------------------------------------- */
+  const hasTool = hasToolInventory || hasToolProficiency;
 
+  // 3) KEIN TOOL → kein Lockpicking
   if (!hasTool) {
     return {
       hasTool: false,
@@ -148,21 +132,33 @@ function getThievesToolsInfo(actor) {
     };
   }
 
-  /* -------------------------------------------------------
-   * 4) BONUS & NACHTEIL NACH DEINER REGEL
-   * ------------------------------------------------------- */
-
+  // 4) Standardwerte
   let totalBonus = dexMod;
   let disadvantage = true;
+  let proficient = false;
+  let expert = false;
 
-  if (expert) {
-    totalBonus = dexMod + profBonus * 2;
+  if (hasToolProficiency && toolsMod !== null) {
+    // Es gibt einen echten Tools-Eintrag inkl. fertigem Modifikator → wir vertrauen dem
+    totalBonus = toolsMod;
     disadvantage = false;
-  } else if (proficient) {
-    totalBonus = dexMod + profBonus;
-    disadvantage = false;
-  } else {
-    // Tool vorhanden, aber keinerlei Übung:
+
+    // Optional: grob abschätzen, ob es "mindestens Proficiency" oder Expertise ist:
+    const delta = toolsMod - dexMod;
+    if (profBonus > 0) {
+      if (delta >= 2 * profBonus - 0.1) {
+        expert = true;
+        proficient = true;
+      } else if (delta >= profBonus - 0.1) {
+        proficient = true;
+      }
+    } else if (delta > 0) {
+      // irgend ein Bonus größer als DEX → vermutlich profizient
+      proficient = true;
+    }
+  } else if (hasToolInventory && !hasToolProficiency) {
+    // Nur Werkzeug im Inventar, aber kein Proficiency-Eintrag:
+    // -> DEX, mit Nachteil (totalBonus bleibt dexMod, disadvantage = true)
     totalBonus = dexMod;
     disadvantage = true;
   }
