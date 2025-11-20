@@ -1,6 +1,6 @@
 /**
- * Lockpicking Minigame - main.js (stabile Version ohne Glow/Puls/Sonderfarben)
- * Zustand: VOR den optischen Erweiterungen
+ * Lockpicking Minigame - main.js (stabile Version mit visueller Hervorhebung)
+ * Ausgangsbasis: funktionierende Version ohne Glow/Puls/Sonderfarben
  */
 
 const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
@@ -377,20 +377,12 @@ class LockpickingGameApp extends Application {
     return super.close();
   }
 
-  /* ---------------- START GAME ---------------- */
+  /* ---------------- HIGHLIGHT CURRENT STEP ---------------- */
 
-  _start() {
-
-    this._setupDifficulty();
-    this._renderSequence();
-
-    this.currentIndex = 0;
-    this._updateCurrentKeyIcon();
-
-      _highlightCurrentStep() {
+  _highlightCurrentStep() {
     if (!this._seq) return;
 
-    // alle "current"-Marker entfernen
+    // alle bisherigen "current"-Marker entfernen
     this._seq.querySelectorAll(".lp-sequence-step--current").forEach(el => {
       el.classList.remove("lp-sequence-step--current");
     });
@@ -399,6 +391,21 @@ class LockpickingGameApp extends Application {
     if (el) el.classList.add("lp-sequence-step--current");
   }
 
+  /* ---------------- START GAME ---------------- */
+
+  _start() {
+
+    this._setupDifficulty();
+    this._renderSequence();
+
+    this.currentIndex = 0;
+    this.mistakesMade = 0;
+    this._updateMistakesInfo();
+
+    if (this.sequence.length > 0) {
+      this._updateCurrentKeyIcon();
+      this._highlightCurrentStep();
+    }
 
     this._status.textContent = "Los geht’s!";
     this._lastTs = null;
@@ -423,6 +430,11 @@ class LockpickingGameApp extends Application {
   }
 
   _updateCurrentKeyIcon() {
+    if (!this.sequence.length || this.currentIndex >= this.sequence.length) {
+      // falls irgendwas schief geht, Icon leeren statt Fehler zu werfen
+      this._keyIconInner.style.backgroundImage = "";
+      return;
+    }
     const key = this.sequence[this.currentIndex];
     const path = ARROW_ICON_PATHS[key];
     this._keyIconInner.style.backgroundImage = `url("${path}")`;
@@ -469,6 +481,8 @@ class LockpickingGameApp extends Application {
 
     ev.preventDefault();
 
+    if (!this.sequence.length || this.currentIndex >= this.sequence.length) return;
+
     const expected = this.sequence[this.currentIndex];
 
     if (ev.key !== expected) {
@@ -487,11 +501,15 @@ class LockpickingGameApp extends Application {
 
     /* RICHTIGE Taste */
     const el = this._seq.querySelector(`[data-index="${this.currentIndex}"]`);
-    el.classList.remove("lp-sequence-step--pending");
-    el.classList.add("lp-sequence-step--success");
+    if (el) {
+      el.classList.remove("lp-sequence-step--pending");
+      el.classList.add("lp-sequence-step--success");
 
-    const icon = el.querySelector(".lp-sequence-step-icon");
-    icon.style.backgroundImage = `url("${ARROW_ICON_PATHS[expected]}")`;
+      const icon = el.querySelector(".lp-sequence-step-icon");
+      if (icon) {
+        icon.style.backgroundImage = `url("${ARROW_ICON_PATHS[expected]}")`;
+      }
+    }
 
     this.currentIndex++;
 
@@ -499,6 +517,7 @@ class LockpickingGameApp extends Application {
       return this._finish(true, "Alle Tasten korrekt.");
 
     this._updateCurrentKeyIcon();
+    this._highlightCurrentStep();
   }
 
   /* ---------------- FINISH ---------------- */
