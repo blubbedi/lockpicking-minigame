@@ -438,45 +438,41 @@ class LockpickingGameApp extends Application {
   _setupDifficulty() {
     const { dc, bonus, disadvantage } = this.config;
 
-    // Differenz zwischen DC und Bonus (kann negativ sein)
-    const diff = dc - bonus;
+    const baseDc = 10;
 
-    // Grundanzahl Schritte abhängig vom DC
-    // DC 10 → ca. 4–5 Schritte
-    // DC 15 → ca. 5–6 Schritte
-    // DC 20 → ca. 6–7 Schritte
-    let steps = 4 + Math.floor(dc / 6);
+    // DC 10 = 5 Steps, 5 Sekunden
+    // pro +1 DC → +1 Step, +0,5 Sekunden
+    let steps = 5 + (dc - baseDc);
+    let totalSeconds = 5 + (dc - baseDc) * 0.5;
 
-    // Wenn der Bonus deutlich UNTER dem DC liegt → mehr Schritte
-    // (diff > 0 = DC höher als Bonus)
-    steps += Math.floor(Math.max(0, diff) / 4);
+    // Sicherheitsgrenzen
+    steps = Math.max(3, Math.min(15, steps));
+    totalSeconds = Math.max(3, Math.min(20, totalSeconds));
 
-    // Hoher Bonus reduziert die Schrittanzahl
-    const bonusReduction = Math.floor(Math.max(0, bonus) / 3);
-    steps -= bonusReduction;
+    // Bonus gibt NUR zusätzliche Zeit
+    const safeBonus = Number.isFinite(bonus) ? Math.max(0, bonus) : 0;
+    const bonusSeconds = Math.floor(safeBonus / 2);
+    totalSeconds += bonusSeconds;
 
-    // Begrenzen, damit es nicht zu wenig oder zu viele Schritte werden
-    steps = Math.max(3, Math.min(8, steps));
-
-    // Basiszeit: hängt primär von der Schrittanzahl ab
-    let totalMs = 6000 + steps * 900;
-
-    // Nachteil: Zeit läuft schneller ab (weniger Gesamtzeit)
+    // Nachteil verkürzt am Ende die Gesamtzeit
     if (disadvantage) {
-      totalMs *= 0.65;
+      totalSeconds *= 0.65; // z. B. 35 % weniger Zeit
     }
-    // Kein Nachteil: neutrale Zeit, Vorteil kommt nur über weniger Schritte
+
+    // Final clamp
+    totalSeconds = Math.max(1.5, Math.min(25, totalSeconds));
 
     this.sequence = this._generateSequence(steps);
-    this.totalTimeMs = Math.round(totalMs);
+    this.totalTimeMs = Math.round(totalSeconds * 1000);
     this.remainingMs = this.totalTimeMs;
 
     console.log(`${LOCKPICKING_NAMESPACE} | QTE-Setup:`, {
       dc,
-      bonus,
+      bonus: safeBonus,
       disadvantage,
-      diff,
       steps,
+      bonusSeconds,
+      totalSeconds,
       totalTimeMs: this.totalTimeMs,
       sequence: this.sequence
     });
