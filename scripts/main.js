@@ -300,6 +300,10 @@ class LockpickingGameApp extends Application {
     this._lastTs = null;
     this._raf = null;
     this._keyHandler = this._onKeyDown.bind(this);
+
+    // NEU: Flag, ob das Minigame gerade läuft
+    this._running = false;
+    this._startBtn = null;
   }
 
   static get defaultOptions() {
@@ -363,6 +367,8 @@ class LockpickingGameApp extends Application {
     this._status = html.find(".lp-status-text")[0];
     this._mistakesInfo = html.find(".lp-mistakes-info")[0];
 
+    this._startBtn = html.find("[data-action='start-game']")[0];
+
     html.find("[data-action='start-game']").click(this._start.bind(this));
     html.find("[data-action='cancel-game']").click(() => this._finish(false, "Abgebrochen."));
 
@@ -396,8 +402,6 @@ class LockpickingGameApp extends Application {
   _flashCurrentKeyIcon() {
     if (!this._keyIconBox) return;
 
-    // Klasse entfernen, Reflow erzwingen, wieder hinzufügen,
-    // damit die CSS-Animation jedes Mal neu gestartet wird
     this._keyIconBox.classList.remove("lp-current-key-icon--hit");
     void this._keyIconBox.offsetWidth;
     this._keyIconBox.classList.add("lp-current-key-icon--hit");
@@ -406,6 +410,13 @@ class LockpickingGameApp extends Application {
   /* ---------------- START GAME ---------------- */
 
   _start() {
+    // verhindert mehrfachen Start, solange das Spiel läuft
+    if (this._running) return;
+    this._running = true;
+
+    if (this._startBtn) {
+      this._startBtn.disabled = true;
+    }
 
     this._setupDifficulty();
     this._renderSequence();
@@ -542,6 +553,12 @@ class LockpickingGameApp extends Application {
       success ? "Erfolg!" : `Fehlschlag: ${reason}`;
 
     cancelAnimationFrame(this._raf);
+
+    // Laufstatus zurücksetzen & Start-Button wieder freigeben (falls Fenster offen bliebe)
+    this._running = false;
+    if (this._startBtn) {
+      this._startBtn.disabled = false;
+    }
 
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this.actor }),
