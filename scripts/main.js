@@ -391,6 +391,18 @@ class LockpickingGameApp extends Application {
     if (el) el.classList.add("lp-sequence-step--current");
   }
 
+  /* ---------------- HIT-EFFEKT FÜR KEY-ICON ---------------- */
+
+  _flashCurrentKeyIcon() {
+    if (!this._keyIconBox) return;
+
+    // Klasse entfernen, Reflow erzwingen, wieder hinzufügen,
+    // damit die CSS-Animation jedes Mal neu gestartet wird
+    this._keyIconBox.classList.remove("lp-current-key-icon--hit");
+    void this._keyIconBox.offsetWidth;
+    this._keyIconBox.classList.add("lp-current-key-icon--hit");
+  }
+
   /* ---------------- START GAME ---------------- */
 
   _start() {
@@ -500,6 +512,8 @@ class LockpickingGameApp extends Application {
     }
 
     /* RICHTIGE Taste */
+    this._flashCurrentKeyIcon(); // sichtbares Feedback auch bei gleichen Symbolen
+
     const el = this._seq.querySelector(`[data-index="${this.currentIndex}"]`);
     if (el) {
       el.classList.remove("lp-sequence-step--pending");
