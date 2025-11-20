@@ -1,35 +1,35 @@
 <div class="lp-game-root">
+
   <h2 class="lp-title">Schlossknacken</h2>
 
   <div class="lp-meta">
     <div><b>{{actorName}}</b> versucht ein Schloss zu knacken.</div>
+
     <div class="lp-tags-row">
       <span class="lp-tag lp-tag--dc">DC: {{dc}}</span>
       <span class="lp-tag lp-tag--bonus">Bonus: {{bonus}}</span>
+
       {{#if disadvantage}}
         <span class="lp-tag lp-tag--bad">mit Nachteil</span>
       {{else}}
         <span class="lp-tag lp-tag--good">ohne Nachteil</span>
       {{/if}}
     </div>
+
     <p class="lp-expl">
       Drücke nacheinander die angezeigten Pfeiltasten, bevor der Zeitbalken leer ist.
-      Jede Taste erscheint einzeln. Geschaffte Schritte werden oben als kleine Icons grün markiert.
+      Geschaffte Schritte werden oben grün markiert.
     </p>
   </div>
 
   <div class="lp-section">
     <div class="lp-section-label">Fortschritt:</div>
-    <div class="lp-timer-bar">
-      <div class="lp-timer-fill"></div>
-    </div>
+    <div class="lp-timer-bar"><div class="lp-timer-fill"></div></div>
   </div>
 
   <div class="lp-section">
     <div class="lp-section-label">Gesamtsequenz:</div>
-    <div class="lp-sequence-steps">
-      {{!-- Platzhalter werden per JS eingefügt --}}
-    </div>
+    <div class="lp-sequence-steps"></div>
   </div>
 
   <div class="lp-current-key-box">
@@ -39,16 +39,11 @@
     <div class="lp-current-key-label">Aktuelle Taste</div>
   </div>
 
-  <div class="lp-status-text">
-    Minispiel bereit – klicke »Start«, um zu beginnen.
-  </div>
+  <div class="lp-status-text">Bereit – klicke »Start«.</div>
 
   <div class="lp-buttons">
-    <button type="button" class="lp-btn lp-btn--primary" data-action="start-game">
-      Start
-    </button>
-    <button type="button" class="lp-btn" data-action="cancel-game">
-      Abbrechen
-    </button>
+    <button class="lp-btn lp-btn--primary" data-action="start-game">Start</button>
+    <button class="lp-btn" data-action="cancel-game">Abbrechen</button>
   </div>
+
 </div>
