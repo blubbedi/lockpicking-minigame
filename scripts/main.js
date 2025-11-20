@@ -552,6 +552,7 @@ class LockpickingGameApp extends Application {
 
     this._html = html;
     this._timerFill = html.find(".lp-timer-fill")[0];
+    this._timerText = html.find(".lp-timer-text")[0];      // <-- Sekundenanzeige
     this._sequenceContainer = html.find(".lp-sequence-steps")[0];
     this._currentKeyIcon = html.find(".lp-current-key-icon-inner")[0];
     this._statusText = html.find(".lp-status-text")[0];
@@ -662,9 +663,17 @@ class LockpickingGameApp extends Application {
       if (this.remainingMs < 0) this.remainingMs = 0;
     }
 
+    // Balkenbreite anpassen
     if (this._timerFill) {
       const pct = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) * 100 : 0;
       this._timerFill.style.width = `${pct}%`;
+    }
+
+    // Sekundenanzeige aktualisieren
+    if (this._timerText) {
+      const seconds = this.remainingMs / 1000;
+      const display = seconds.toFixed(1); // eine Nachkommastelle
+      this._timerText.textContent = `${display}s`;
     }
 
     if (this.remainingMs <= 0) {
