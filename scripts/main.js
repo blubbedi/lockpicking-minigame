@@ -203,7 +203,7 @@ function getThievesToolsInfo(actor) {
 class LockpickingConfigApp extends FormApplication {
 
   static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: "lockpicking-config",
       template: "modules/lockpicking-minigame/templates/lock-config.hbs",
       width: 420,
@@ -307,7 +307,7 @@ class LockpickingGameApp extends Application {
   }
 
   static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: "lockpicking-game",
       template: "modules/lockpicking-minigame/templates/lock-game.hbs",
       width: 420,
