@@ -1,11 +1,11 @@
 /**
- * Lockpicking Minigame - main.js
+ * Lockpicking Minigame - main.js (aktuelle Vollversion)
  * Foundry VTT v11
  */
 
 const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
 
-/* --- Icon-Pfade für JPG --- */
+/* --- Icon-Pfade für JPG-Dateien --- */
 const ARROW_ICON_PATHS = {
   ArrowUp: "modules/lockpicking-minigame/icons/arrow-up.jpg",
   ArrowDown: "modules/lockpicking-minigame/icons/arrow-down.jpg",
@@ -13,14 +13,14 @@ const ARROW_ICON_PATHS = {
   ArrowRight: "modules/lockpicking-minigame/icons/arrow-right.jpg"
 };
 
-/* -------------------------------------------------------------- */
-/* Hooks                                                          */
-/* -------------------------------------------------------------- */
+/* ========================================================================== */
+/*                                   HOOKS                                    */
+/* ========================================================================== */
 
 Hooks.once("ready", () => {
   game.lockpickingMinigame = {
     openConfig() {
-      if (!game.user.isGM) return ui.notifications.warn("Nur der SL kann das öffnen.");
+      if (!game.user.isGM) return ui.notifications.warn("Nur der SL kann dies öffnen.");
       new LockpickingConfigApp().render(true);
     }
   };
@@ -37,50 +37,119 @@ Hooks.once("ready", () => {
   });
 });
 
-/* -------------------------------------------------------------- */
-/* Hilfsfunktionen                                                */
-/* -------------------------------------------------------------- */
+/* ========================================================================== */
+/*                     TOOL-PROFICIENCY / BONUS-BERECHNUNG                    */
+/* ========================================================================== */
 
+/**
+ * Ermittelt vollständige Infos zu Thieves' Tools.
+ * Liefert:
+ *  - hasTool        -> besitzt Diebeswerkzeuge
+ *  - profLevel      -> Rohwert 0 / 0.5 / 1 / 2
+ *  - profMultiplier -> 0 / 0.5 / 1 / 2 (für Berechnung)
+ *  - totalBonus     -> endgültiger Bonus inkl. Ability + Profi + Bonus
+ *  - disadvantage   -> true = Nachteil, false = nicht
+ */
 function getThievesToolsInfo(actor) {
-  const getP = foundry.utils.getProperty;
+  const getProp = foundry.utils.getProperty;
+
   let hasTool = false;
   let profLevel = 0;
+  let profMultiplier = 0;
+  let totalBonus = 0;
+  let disadvantage = true;
 
-  // Suche nach Tool-Item
-  const item = actor.items.find(i =>
-    i.type === "tool" &&
-    (i.name.toLowerCase().includes("diebes") || i.name.toLowerCase().includes("thieves"))
+  const profBonus = Number(getProp(actor, "system.attributes.prof") ?? 0);
+
+  /* --- 1) Primär: system.tools durchsuchen --- */
+  const tools = getProp(actor, "system.tools") ?? {};
+
+  for (const [key, data] of Object.entries(tools)) {
+    const label = (data.label ?? "").toLowerCase();
+    if (!label) continue;
+
+    if (label.includes("thieves") || label.includes("diebes")) {
+      hasTool = true;
+
+      const abilityKey = data.ability || "dex";
+      const abilityMod = Number(getProp(actor, `system.abilities.${abilityKey}.mod`) ?? 0);
+
+      const rawProf = Number(data.prof ?? data.proficient ?? data.value ?? 0);
+      profLevel = Math.max(profLevel, rawProf);
+
+      let mult = 0;
+      if (rawProf >= 2) mult = 2;
+      else if (rawProf >= 1) mult = 1;
+      else if (rawProf > 0) mult = 0.5;
+
+      profMultiplier = Math.max(profMultiplier, mult);
+
+      const miscBonus = Number(data.bonus ?? 0);
+      const candidate = abilityMod + profBonus * mult + miscBonus;
+
+      totalBonus = Math.max(totalBonus, candidate);
+    }
+  }
+
+  /* --- 2) Fallback: Tool-Item durchsuchen --- */
+  const item = actor.items.find(it =>
+    it.type === "tool" &&
+    (it.name.toLowerCase().includes("thieves") || it.name.toLowerCase().includes("diebes"))
   );
 
   if (item) {
     hasTool = true;
-    const p = Number(getP(item, "system.proficient") ?? 0);
-    profLevel = Math.max(profLevel, p);
+
+    const abilityKey = getProp(item, "system.ability") || "dex";
+    const abilityMod = Number(getProp(actor, `system.abilities.${abilityKey}.mod`) ?? 0);
+
+    const rawProf = Number(getProp(item, "system.proficient") ?? 0);
+    profLevel = Math.max(profLevel, rawProf);
+
+    let mult = 0;
+    if (rawProf >= 2) mult = 2;
+    else if (rawProf >= 1) mult = 1;
+    else if (rawProf > 0) mult = 0.5;
+
+    profMultiplier = Math.max(profMultiplier, mult);
+
+    const miscBonus = Number(getProp(item, "system.bonus") ?? 0);
+    const candidate = abilityMod + profBonus * mult + miscBonus;
+
+    totalBonus = Math.max(totalBonus, candidate);
   }
 
-  // system.tools (alternative Stelle)
-  const tools = getP(actor, "system.tools") ?? {};
-  for (const key of Object.keys(tools)) {
-    const t = tools[key];
-    const label = (t.label ?? "").toLowerCase();
-    if (label.includes("diebes") || label.includes("thieves")) {
-      hasTool = true;
-      const v = Number(t.value ?? 0);
-      profLevel = Math.max(profLevel, v);
-    }
+  /* --- 3) Wenn kein Tool gefunden wurde --- */
+  if (!hasTool) {
+    return {
+      hasTool: false,
+      profLevel: 0,
+      profMultiplier: 0,
+      totalBonus: 0,
+      disadvantage: true
+    };
   }
 
-  let profMultiplier = 0;
-  if (profLevel >= 2) profMultiplier = 2;
-  else if (profLevel >= 1) profMultiplier = 1;
-  else if (profLevel > 0) profMultiplier = 0.5;
+  /* --- 4) Wenn totalBonus 0 ist: Dex + Prof rechnen --- */
+  if (totalBonus === 0) {
+    const dex = Number(getProp(actor, "system.abilities.dex.mod") ?? 0);
+    totalBonus = dex + profBonus * profMultiplier;
+  }
 
-  return { hasTool, profLevel, profMultiplier };
+  if (profMultiplier > 0) disadvantage = false;
+
+  return {
+    hasTool,
+    profLevel,
+    profMultiplier,
+    totalBonus,
+    disadvantage
+  };
 }
 
-/* -------------------------------------------------------------- */
-/*  GM-Konfiguration                                              */
-/* -------------------------------------------------------------- */
+/* ========================================================================== */
+/*                        GM-KONFIGURATION (FormApplication)                  */
+/* ========================================================================== */
 
 class LockpickingConfigApp extends FormApplication {
   static get defaultOptions() {
@@ -101,42 +170,41 @@ class LockpickingConfigApp extends FormApplication {
 
     for (const user of users) {
       const actors = game.actors.contents.filter(a =>
-        a.type === "character" && a.testUserPermission(user, "OWNER")
+        a.type === "character" &&
+        a.testUserPermission(user, "OWNER")
       );
 
-      if (actors.length)
+      if (actors.length) {
         groups.push({
           userId: user.id,
           userName: user.name,
           options: actors.map(a => ({ actorId: a.id, actorName: a.name }))
         });
+      }
     }
 
-    return { groups, defaultDc: 15 };
+    return {
+      groups,
+      defaultDc: 15
+    };
   }
 
-  async _updateObject(event, data) {
-    const selection = data.selection;
-    if (!selection) return ui.notifications.error("Bitte einen Charakter wählen.");
+  async _updateObject(event, formData) {
+    const selection = formData.selection;
+    if (!selection) return ui.notifications.error("Bitte Charakter auswählen.");
 
     const [actorId, userId] = selection.split("|");
     const actor = game.actors.get(actorId);
     const user = game.users.get(userId);
-    const dc = Number(data.dc) || 15;
+    const dc = Number(formData.dc) || 15;
 
-    const { hasTool, profMultiplier } = getThievesToolsInfo(actor);
-    if (!hasTool) return ui.notifications.warn(`${actor.name} hat keine Diebeswerkzeuge.`);
+    const info = getThievesToolsInfo(actor);
 
-    const dex = actor.system.abilities.dex.mod;
-    const prof = actor.system.attributes.prof;
+    if (!info.hasTool)
+      return ui.notifications.warn(`${actor.name} hat keine Diebeswerkzeuge.`);
 
-    let bonus = dex;
-    let disadvantage = true;
-
-    if (profMultiplier > 0) {
-      bonus = dex + prof * profMultiplier;
-      disadvantage = false;
-    }
+    const bonus = info.totalBonus;
+    const disadvantage = info.disadvantage;
 
     const maxRoll = bonus + 20;
     if (maxRoll < dc)
@@ -144,7 +212,7 @@ class LockpickingConfigApp extends FormApplication {
 
     await ChatMessage.create({
       speaker: { alias: "Lockpicking" },
-      content: `Lockpicking-Minispiel für ${actor.name} gestartet (DC ${dc}, Bonus ${bonus}).`,
+      content: `Lockpicking-Minispiel für ${actor.name} gestartet (DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}).`,
       flags: {
         [LOCKPICKING_NAMESPACE]: {
           action: "openGame",
@@ -159,11 +227,12 @@ class LockpickingConfigApp extends FormApplication {
   }
 }
 
-/* -------------------------------------------------------------- */
-/* Minigame-App                                                   */
-/* -------------------------------------------------------------- */
+/* ========================================================================== */
+/*                          DAS MINIGAME (Application)                        */
+/* ========================================================================== */
 
 class LockpickingGameApp extends Application {
+
   constructor(actor, config) {
     super();
     this.actor = actor;
@@ -174,6 +243,7 @@ class LockpickingGameApp extends Application {
 
     this.totalTimeMs = 0;
     this.remainingMs = 0;
+
     this.gameStarted = false;
     this.finished = false;
 
@@ -181,6 +251,7 @@ class LockpickingGameApp extends Application {
     this._lastTs = null;
     this._keyHandler = this._onKeyDown.bind(this);
   }
+
 
   static get defaultOptions() {
     return {
@@ -195,21 +266,19 @@ class LockpickingGameApp extends Application {
   }
 
   getData() {
-    return {
-      actorName: this.actor.name,
-      dc: this.config.dc,
-      bonus: this.config.bonus,
-      disadvantage: this.config.disadvantage
-    };
+    const { dc, bonus, disadvantage } = this.config;
+    return { actorName: this.actor.name, dc, bonus, disadvantage };
   }
 
-  /* --- Sequenz erzeugen --- */
-  _generateSequence(length) {
-    const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-    return Array.from({ length }, () => keys[Math.floor(Math.random() * keys.length)]);
+  /* ---------------------------------------------------------------------- */
+  /* Difficulty + Sequenz erzeugen                                          */
+  /* ---------------------------------------------------------------------- */
+
+  _generateSequence(len) {
+    const k = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    return Array.from({ length: len }, () => k[Math.floor(Math.random() * k.length)]);
   }
 
-  /* --- Schwierigkeit skalieren --- */
   _setupDifficulty() {
     const { dc, bonus, disadvantage } = this.config;
 
@@ -227,9 +296,12 @@ class LockpickingGameApp extends Application {
     this.remainingMs = this.totalTimeMs;
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Listener                                                               */
+  /* ---------------------------------------------------------------------- */
+
   activateListeners(html) {
     this._html = html;
-
     this._timerFill = html[0].querySelector(".lp-timer-fill");
     this._sequenceContainer = html[0].querySelector(".lp-sequence-steps");
     this._currentKeyIcon = html[0].querySelector(".lp-current-key-icon-inner");
@@ -250,9 +322,10 @@ class LockpickingGameApp extends Application {
     return super.close();
   }
 
-  /* ----------------------------------------------------------- */
-  /* START-BUTTON                                                */
-  /* ----------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
+  /* Start Button                                                            */
+  /* ---------------------------------------------------------------------- */
+
   _onClickStart() {
     if (this.gameStarted || this.finished) return;
 
@@ -271,24 +344,22 @@ class LockpickingGameApp extends Application {
     this._raf = requestAnimationFrame(this._tick.bind(this));
   }
 
-  /* ----------------------------------------------------------- */
-  /* ICONS RENDERN                                               */
-  /* ----------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
+  /* Platzhalter – nur leere graue Felder, KEINE Icons vorher               */
+  /* ---------------------------------------------------------------------- */
 
   _renderSequencePlaceholders() {
+    if (!this._sequenceContainer) return;
     this._sequenceContainer.innerHTML = "";
 
     this.sequence.forEach((key, idx) => {
       const step = document.createElement("div");
-      step.className = "lp-sequence-step lp-sequence-step--pending";
+      step.classList.add("lp-sequence-step", "lp-sequence-step--pending");
       step.dataset.index = idx;
+      step.dataset.key = key;
 
       const icon = document.createElement("div");
-      icon.className = "lp-sequence-step-icon";
-      icon.dataset.key = key;
-
-      const path = ARROW_ICON_PATHS[key];
-      if (path) icon.style.backgroundImage = `url("${path}")`;
+      icon.classList.add("lp-sequence-step-icon");
 
       step.appendChild(icon);
       this._sequenceContainer.appendChild(step);
@@ -296,16 +367,16 @@ class LockpickingGameApp extends Application {
   }
 
   _updateCurrentKeyIcon() {
+    if (!this._currentKeyIcon) return;
     const key = this.sequence[this.currentIndex];
-    this._currentKeyIcon.dataset.key = key;
-
     const path = ARROW_ICON_PATHS[key];
     this._currentKeyIcon.style.backgroundImage = path ? `url("${path}")` : "none";
+    this._currentKeyIcon.dataset.key = key;
   }
 
-  /* ----------------------------------------------------------- */
-  /* TIMER                                                       */
-  /* ----------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
+  /* TICK                                                                    */
+  /* ---------------------------------------------------------------------- */
 
   _tick(ts) {
     if (!this.gameStarted || this.finished) return;
@@ -313,11 +384,11 @@ class LockpickingGameApp extends Application {
     if (!this._lastTs) this._lastTs = ts;
     const dt = ts - this._lastTs;
     this._lastTs = ts;
-
     this.remainingMs -= dt;
+
     if (this.remainingMs < 0) this.remainingMs = 0;
 
-    const pct = this.remainingMs / this.totalTimeMs * 100;
+    const pct = (this.remainingMs / this.totalTimeMs) * 100;
     this._timerFill.style.width = `${pct}%`;
 
     if (this.remainingMs <= 0) return this._finish(false, "Zeit abgelaufen");
@@ -325,9 +396,9 @@ class LockpickingGameApp extends Application {
     this._raf = requestAnimationFrame(this._tick.bind(this));
   }
 
-  /* ----------------------------------------------------------- */
-  /* KEYDOWN                                                     */
-  /* ----------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
+  /* KEYDOWN                                                                 */
+  /* ---------------------------------------------------------------------- */
 
   _onKeyDown(ev) {
     if (!this.gameStarted || this.finished) return;
@@ -338,6 +409,7 @@ class LockpickingGameApp extends Application {
     ev.preventDefault();
 
     const expected = this.sequence[this.currentIndex];
+
     if (ev.key !== expected)
       return this._finish(false, "Falsche Taste gedrückt");
 
@@ -345,22 +417,28 @@ class LockpickingGameApp extends Application {
     this.currentIndex++;
 
     if (this.currentIndex >= this.sequence.length)
-      return this._finish(true, "Alle Eingaben korrekt!");
+      return this._finish(true, "Alles korrekt!");
 
     this._updateCurrentKeyIcon();
   }
 
-  _markStepSuccess(index) {
-    const el = this._sequenceContainer.querySelector(`[data-index="${index}"]`);
+  _markStepSuccess(idx) {
+    const el = this._sequenceContainer.querySelector(`[data-index="${idx}"]`);
     if (!el) return;
 
     el.classList.remove("lp-sequence-step--pending");
     el.classList.add("lp-sequence-step--success");
+
+    const key = el.dataset.key;
+    const path = ARROW_ICON_PATHS[key];
+
+    const icon = el.querySelector(".lp-sequence-step-icon");
+    if (path) icon.style.backgroundImage = `url("${path}")`;
   }
 
-  /* ----------------------------------------------------------- */
-  /* FERTIG                                                     */
-  /* ----------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
+  /* FINISH                                                                  */
+  /* ---------------------------------------------------------------------- */
 
   async _finish(success, reason) {
     this.finished = true;
@@ -368,9 +446,9 @@ class LockpickingGameApp extends Application {
 
     if (this._raf) cancelAnimationFrame(this._raf);
 
-    this._statusText.textContent = success ?
-      "Schloss geknackt!" :
-      `Fehlschlag: ${reason}`;
+    this._statusText.textContent = success
+      ? "Schloss geknackt!"
+      : `Fehlschlag: ${reason}`;
 
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this.actor }),
@@ -382,4 +460,5 @@ class LockpickingGameApp extends Application {
 
     setTimeout(() => this.close(), 1500);
   }
+
 }
