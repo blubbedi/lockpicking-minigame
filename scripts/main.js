@@ -514,6 +514,7 @@ class LockpickingGameApp extends Application {
     if (!valid.includes(ev.key)) return;
 
     ev.preventDefault();
+    ev.stopPropagation();   // verhindert Tokenbewegung in Foundry
 
     if (!this.sequence.length || this.currentIndex >= this.sequence.length) return;
 
