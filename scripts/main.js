@@ -54,7 +54,8 @@ Hooks.once("ready", () => {
       dc: data.dc,
       bonus: data.bonus,
       disadvantage: data.disadvantage,
-      allowedMistakes: data.allowedMistakes
+      allowedMistakes: data.allowedMistakes,
+      reliableTalent: data.reliableTalent
     });
 
     new LockpickingGameApp(actor, data).render(true);
@@ -68,6 +69,7 @@ Hooks.once("ready", () => {
 /**
  * Prüft, ob der Actor das Rogue-Feature "Reliable Talent" besitzt.
  * Wir suchen nach einem Feat / Klassenfeature, dessen Name "reliable" enthält.
+ * (Kannst du bei Bedarf an die deutsche Bezeichnung anpassen.)
  */
 function actorHasReliableTalent(actor) {
   return actor.items.some((it) =>
@@ -395,7 +397,8 @@ class LockpickingConfigApp extends FormApplication {
             dc,
             bonus,
             disadvantage,
-            allowedMistakes
+            allowedMistakes,
+            reliableTalent: hasReliable
           }
         }
       });
@@ -416,7 +419,7 @@ class LockpickingGameApp extends Application {
   constructor(actor, config, options = {}) {
     super(options);
     this.actor = actor;
-    this.config = config; // { dc, bonus, disadvantage, allowedMistakes, ... }
+    this.config = config; // { dc, bonus, disadvantage, allowedMistakes, reliableTalent, ... }
 
     // QTE-Status
     this.sequence = [];
@@ -429,6 +432,7 @@ class LockpickingGameApp extends Application {
     // Fehlertoleranz (Reliable Talent)
     this.allowedMistakes = Number(config.allowedMistakes ?? 0);
     this.mistakesMade = 0;
+    this.reliableTalent = Boolean(config.reliableTalent);
 
     this._raf = null;
     this._lastTs = null;
@@ -455,7 +459,8 @@ class LockpickingGameApp extends Application {
       dc,
       bonus,
       disadvantage,
-      allowedMistakes: this.allowedMistakes
+      allowedMistakes: this.allowedMistakes,
+      reliableTalent: this.reliableTalent
     };
   }
 
@@ -525,6 +530,7 @@ class LockpickingGameApp extends Application {
       totalSeconds,
       totalTimeMs: this.totalTimeMs,
       allowedMistakes: this.allowedMistakes,
+      reliableTalent: this.reliableTalent,
       sequence: this.sequence
     });
   }
