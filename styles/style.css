@@ -125,13 +125,13 @@
   border-color: #3e8e41;
 }
 
-/* NEU: aktueller Schritt – leichte Hervorhebung */
+/* aktueller Schritt – leichte Hervorhebung */
 .lp-sequence-step--current {
   box-shadow: 0 0 4px #ffd54f, 0 0 8px #ffb300;
   border-color: #ffb300;
 }
 
-/* NEU: (optional) expliziter Fehler-Step – falls später genutzt */
+/* (optional) expliziter Fehler-Step – falls später genutzt */
 .lp-sequence-step--fail {
   background: #f44336;
   border-color: #b71c1c;
@@ -167,7 +167,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* NEU: leichter Schatten für das Key-Feld */
+  /* leichter Schatten für das Key-Feld */
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
 }
 
@@ -177,8 +177,28 @@
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
-  /* NEU: sanfter Schimmer um das aktuelle Symbol */
+  /* sanfter Schimmer um das aktuelle Symbol */
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+}
+
+/* kleiner „Hit“-Effekt bei korrekter Taste */
+.lp-current-key-icon--hit {
+  animation: lp-key-hit 0.12s ease-out;
+}
+
+@keyframes lp-key-hit {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    transform: scale(0.9);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* =========================================================
