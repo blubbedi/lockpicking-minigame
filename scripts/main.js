@@ -58,44 +58,116 @@ function actorHasReliableTalent(actor) {
 /* ------------------------------------------------------------- */
 
 function getThievesToolsInfo(actor) {
-  const dexMod = actor.system.abilities.dex.mod ?? 0;
-  const profBonus = actor.system.attributes.prof ?? 0;
+  const getProp = foundry.utils.getProperty;
 
+  const dexMod = Number(getProp(actor, "system.abilities.dex.mod") ?? 0);
+  const profBonus = Number(getProp(actor, "system.attributes.prof") ?? 0);
+
+  let hasToolInventory = false;
+  let hasToolsEntry = false;
   let proficient = false;
   let expert = false;
-  let hasTool = false;
 
-  const invTool = actor.items.find(it =>
-    it.type === "tool" &&
-    it.name.toLowerCase().includes("thieves")
-  );
+  let itemProfLevel = 0;
+  let toolsProfLevel = 0;
+
+  /* -------------------------------------------------------
+   * 1) TOOL IM INVENTAR (Items)
+   * ------------------------------------------------------- */
+  const invTool = actor.items.find((it) => {
+    const name = (it.name ?? "").toLowerCase();
+    return it.type === "tool" && (name.includes("thieves") || name.includes("diebes"));
+  });
 
   if (invTool) {
-    hasTool = true;
-    const p = Number(invTool.system?.proficient ?? 0);
-    if (p >= 2) expert = true;
-    else if (p >= 1) proficient = true;
+    hasToolInventory = true;
+
+    const pRaw = getProp(invTool, "system.proficient");
+    const pNum = Number(pRaw ?? 0);
+
+    if (!Number.isNaN(pNum)) {
+      itemProfLevel = pNum;
+    } else if (typeof pRaw === "boolean" && pRaw) {
+      itemProfLevel = 1;
+    } else if (typeof pRaw === "string" && pRaw !== "" && pRaw !== "0") {
+      itemProfLevel = 1;
+    }
+
+    if (itemProfLevel >= 2) expert = true;
+    else if (itemProfLevel >= 1) proficient = true;
   }
 
-  for (const t of Object.values(actor.system.tools ?? {})) {
-    const lbl = (t.label ?? "").toLowerCase();
-    if (!lbl.includes("thieves")) continue;
-    hasTool = true;
+  /* -------------------------------------------------------
+   * 2) TOOL-PROFICIENCY IM ACTOR (system.tools)
+   *    z.B. actor.system.tools.thief
+   * ------------------------------------------------------- */
+  const toolsData = getProp(actor, "system.tools") ?? {};
+  for (const [key, data] of Object.entries(toolsData)) {
+    const keyName = String(key ?? "").toLowerCase();
+    const label = String(data.label ?? "").toLowerCase();
 
-    const p = Number(t.prof ?? t.value ?? t.base ?? 0);
-    if (p >= 2) expert = true;
-    else if (p >= 1) proficient = true;
+    const looksLikeThievesTool =
+      keyName.includes("thief") ||
+      keyName.includes("thieves") ||
+      keyName.includes("dieb") ||
+      label.includes("thief") ||
+      label.includes("thieves") ||
+      label.includes("diebes");
+
+    if (!looksLikeThievesTool) continue;
+
+    hasToolsEntry = true;
+
+    const candidates = ["prof", "proficient", "value", "base"];
+    let best = 0;
+    for (const prop of candidates) {
+      const raw = data[prop];
+      if (raw === undefined || raw === null) continue;
+
+      if (typeof raw === "number" && !Number.isNaN(raw)) {
+        best = Math.max(best, raw);
+      } else if (typeof raw === "boolean" && raw) {
+        best = Math.max(best, 1);
+      } else if (typeof raw === "string" && raw !== "" && raw !== "0") {
+        best = Math.max(best, 1);
+      }
+    }
+
+    toolsProfLevel = Math.max(toolsProfLevel, best);
   }
 
-  if (!hasTool) {
-    return {
+  // Level aus system.tools auf Proficiency/Expertise mappen
+  if (toolsProfLevel >= 2) {
+    expert = true;
+  } else if (toolsProfLevel >= 1) {
+    proficient = true;
+  } else if (hasToolsEntry && !expert && !proficient) {
+    // WICHTIGER FALLBACK:
+    // Viele dnd5e-Sheets haben zwar einen Eintrag in system.tools für Diebeswerkzeuge,
+    // aber alle Werte sind 0. Der Eintrag bedeutet dann trotzdem "geübt".
+    proficient = true;
+  }
+
+  /* -------------------------------------------------------
+   * 3) GESAMT-LOGIK: BONUS & NACHTEIL
+   * ------------------------------------------------------- */
+  const hasAnyTool = hasToolInventory || hasToolsEntry;
+
+  if (!hasAnyTool) {
+    const info = {
       dexMod,
       profBonus,
+      hasToolInventory,
+      hasToolsEntry,
+      itemProfLevel,
+      toolsProfLevel,
       proficient: false,
       expert: false,
       totalBonus: 0,
       disadvantage: true
     };
+    console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
+    return info;
   }
 
   let totalBonus = dexMod;
@@ -107,9 +179,26 @@ function getThievesToolsInfo(actor) {
   } else if (proficient) {
     totalBonus = dexMod + profBonus;
     disadvantage = false;
+  } else {
+    totalBonus = dexMod;
+    disadvantage = true;
   }
 
-  return { dexMod, profBonus, proficient, expert, totalBonus, disadvantage };
+  const info = {
+    dexMod,
+    profBonus,
+    hasToolInventory,
+    hasToolsEntry,
+    itemProfLevel,
+    toolsProfLevel,
+    proficient,
+    expert,
+    totalBonus,
+    disadvantage
+  };
+
+  console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
+  return info;
 }
 
 /* ------------------------------------------------------------- */
