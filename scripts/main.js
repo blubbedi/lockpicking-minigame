@@ -75,6 +75,7 @@ function actorHasReliableTalent(actor) {
   return actor.items.some((it) =>
     (it.type === "feat" || it.type === "classFeature") &&
     (it.name || "").toLowerCase().includes("reliable")
+    (it.name || "").toLowerCase().includes("verlässlich")                      
   );
 }
 
