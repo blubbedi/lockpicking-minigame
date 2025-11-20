@@ -65,23 +65,20 @@ Hooks.once("ready", () => {
 /* ========================================================================== */
 
 /**
- * Bestimmt, ob ein Actor Thieves’ Tools besitzt und wie der Bonus aussehen soll.
+ * Bestimmt, ob ein Actor Thieves’ Tools besitzt, geübt ist oder Expertise hat.
  *
  * Logik:
- *  - Kein Tool (weder Inventar noch system.tools)
- *      -> kein Lockpicking
- *  - Tool NUR im Inventar, kein Eintrag in system.tools,
- *    und Item-Proficiency <= 0
- *      -> Lockpicking mit Nachteil, Bonus = nur DEX
- *  - Tool + Eintrag in system.tools (Thieves’ Tools),
- *    oder Item-Proficiency >= 1
- *      -> ohne Nachteil, Bonus = DEX + Prof
- *  - Expertise (Item-Proficiency >= 2)
- *      -> ohne Nachteil, Bonus = DEX + 2 * Prof
+ *  - Kein Tool           -> kein Lockpicking (wir blocken später)
+ *  - Tool, keine Übung   -> Lockpicking mit Nachteil, Bonus = nur DEX
+ *  - Tool + Übung        -> ohne Nachteil, Bonus = DEX + Prof
+ *  - Tool + Expertise    -> ohne Nachteil, Bonus = DEX + 2*Prof
  *
  * Ergebnis:
  * {
- *   hasTool: bool,
+ *   dexMod: number,
+ *   profBonus: number,
+ *   hasToolInventory: bool,
+ *   hasToolsEntry: bool,
  *   proficient: bool,
  *   expert: bool,
  *   totalBonus: number,
@@ -94,9 +91,17 @@ function getThievesToolsInfo(actor) {
   const dexMod = Number(getProp(actor, "system.abilities.dex.mod") ?? 0);
   const profBonus = Number(getProp(actor, "system.attributes.prof") ?? 0);
 
-  // 1) Tool im Inventar?
   let hasToolInventory = false;
+  let hasToolsEntry = false;
+  let proficient = false;
+  let expert = false;
+
   let itemProfLevel = 0;
+  let toolsProfLevel = 0;
+
+  /* -------------------------------------------------------
+   * 1) TOOL IM INVENTAR (Items)
+   * ------------------------------------------------------- */
 
   const invTool = actor.items.find((it) => {
     const name = (it.name ?? "").toLowerCase();
@@ -105,52 +110,93 @@ function getThievesToolsInfo(actor) {
 
   if (invTool) {
     hasToolInventory = true;
-    const p = Number(getProp(invTool, "system.proficient") ?? 0); // 0, 0.5, 1, 2
-    if (!Number.isNaN(p)) itemProfLevel = p;
+
+    // dnd5e: meist 0, 0.5, 1, 2 – aber bei Tools oft 0
+    const pRaw = getProp(invTool, "system.proficient");
+    const pNum = Number(pRaw ?? 0);
+
+    if (!Number.isNaN(pNum)) {
+      itemProfLevel = pNum;
+    } else if (typeof pRaw === "boolean" && pRaw) {
+      itemProfLevel = 1;
+    } else if (typeof pRaw === "string" && pRaw !== "" && pRaw !== "0") {
+      itemProfLevel = 1;
+    }
+
+    if (itemProfLevel >= 2) expert = true;
+    else if (itemProfLevel >= 1) proficient = true;
   }
 
-  // 2) Tool-Proficiency im Actor (system.tools)?
+  /* -------------------------------------------------------
+   * 2) TOOL-PROFICIENCY IM ACTOR (system.tools)
+   *    z.B. actor.system.tools.thief
+   * ------------------------------------------------------- */
+
   const toolsData = getProp(actor, "system.tools") ?? {};
-  let hasToolsEntry = false;
+  for (const [key, data] of Object.entries(toolsData)) {
+    const keyName = String(key ?? "").toLowerCase();
+    const label = String(data.label ?? "").toLowerCase();
 
-  for (const data of Object.values(toolsData)) {
-    const label = (data.label ?? "").toLowerCase();
-    if (!label || (!label.includes("thieves") && !label.includes("diebes"))) continue;
+    // versuche sowohl über Key als auch über Label Thieves' Tools zu erkennen
+    const looksLikeThievesTool =
+      keyName.includes("thief") ||
+      keyName.includes("thieves") ||
+      keyName.includes("dieb") ||
+      label.includes("thief") ||
+      label.includes("thieves") ||
+      label.includes("diebes");
+
+    if (!looksLikeThievesTool) continue;
+
     hasToolsEntry = true;
-    break;
+
+    // mögliche Felder, je nach dnd5e-Version / Modul
+    const candidates = ["prof", "proficient", "value", "base"];
+
+    let best = 0;
+    for (const prop of candidates) {
+      const raw = data[prop];
+      if (raw === undefined || raw === null) continue;
+
+      if (typeof raw === "number" && !Number.isNaN(raw)) {
+        best = Math.max(best, raw);
+      } else if (typeof raw === "boolean" && raw) {
+        best = Math.max(best, 1);
+      } else if (typeof raw === "string" && raw !== "" && raw !== "0") {
+        best = Math.max(best, 1);
+      }
+    }
+
+    toolsProfLevel = Math.max(toolsProfLevel, best);
   }
 
-  const hasTool = hasToolInventory || hasToolsEntry;
+  if (toolsProfLevel >= 2) expert = true;
+  else if (toolsProfLevel >= 1) proficient = true;
 
-  // 3) Kein Tool -> kein Lockpicking
-  if (!hasTool) {
-    return {
-      hasTool: false,
+  /* -------------------------------------------------------
+   * 3) GESAMT-LOGIK: BONUS & NACHTEIL
+   * ------------------------------------------------------- */
+
+  const hasAnyTool = hasToolInventory || hasToolsEntry;
+
+  if (!hasAnyTool) {
+    // Kein Tool → später im Config-Dialog abfangen
+    const info = {
+      dexMod,
+      profBonus,
+      hasToolInventory,
+      hasToolsEntry,
+      itemProfLevel,
+      toolsProfLevel,
       proficient: false,
       expert: false,
       totalBonus: 0,
       disadvantage: true
     };
+    console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
+    return info;
   }
 
-  // 4) Proficiency/Expertise ableiten
-  let proficient = false;
-  let expert = false;
-
-  // Wenn es einen Eintrag in system.tools gibt, behandeln wir das als "mindestens geübt".
-  if (hasToolsEntry) {
-    proficient = true;
-  }
-
-  // Zusätzlich Proficiencylevel vom Item mit einbeziehen (kann Expertise anzeigen)
-  if (itemProfLevel >= 2) {
-    expert = true;
-    proficient = true;
-  } else if (itemProfLevel >= 1) {
-    proficient = true;
-  }
-
-  // 5) Bonus & Nachteil nach deiner Regel
   let totalBonus = dexMod;
   let disadvantage = true;
 
@@ -161,30 +207,26 @@ function getThievesToolsInfo(actor) {
     totalBonus = dexMod + profBonus;
     disadvantage = false;
   } else {
-    // Nur Tool, aber keinerlei Übung -> nur Dex, mit Nachteil
+    // Tool vorhanden, aber keinerlei Übung:
     totalBonus = dexMod;
     disadvantage = true;
   }
 
-  console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, {
+  const info = {
     dexMod,
     profBonus,
     hasToolInventory,
     hasToolsEntry,
     itemProfLevel,
-    proficient,
-    expert,
-    totalBonus,
-    disadvantage
-  });
-
-  return {
-    hasTool,
+    toolsProfLevel,
     proficient,
     expert,
     totalBonus,
     disadvantage
   };
+
+  console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
+  return info;
 }
 
 /* ========================================================================== */
@@ -272,7 +314,7 @@ class LockpickingConfigApp extends FormApplication {
       // --- Tool-Infos ermitteln ---
       const info = getThievesToolsInfo(actor);
 
-      if (!info.hasTool) {
+      if (!info.hasToolInventory && !info.hasToolsEntry) {
         ui.notifications.warn(
           `${actor.name} besitzt keine Diebeswerkzeuge – Schlossknacken nicht möglich.`
         );
