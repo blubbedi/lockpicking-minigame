@@ -1,4 +1,4 @@
-<div class="lp-game-root {{#if disadvantage}}lp-game--disadvantage{{else}}lp-game--normal{{/if}}">
+<div class="lp-game-root">
 
   <h2 class="lp-title">Schlossknacken</h2>
 
@@ -9,7 +9,7 @@
       <span class="lp-tag lp-tag--dc">DC: {{dc}}</span>
       <span class="lp-tag lp-tag--bonus">Bonus: {{bonus}}</span>
 
-      {{!-- Verlässliches Talent anzeigen, wenn aktiv --}}
+      {{!-- Reliable Talent anzeigen, wenn aktiv --}}
       {{#if reliableTalent}}
         <span class="lp-tag lp-tag--reliable">Verlässliches Talent</span>
       {{/if}}
@@ -27,21 +27,23 @@
     </p>
   </div>
 
+  <!-- Fortschritt / Timer -->
   <div class="lp-section">
     <div class="lp-section-label">Fortschritt:</div>
     <div class="lp-timer-bar">
       <div class="lp-timer-fill"></div>
-      <div class="lp-timer-text">–.–s</div>
+      <div class="lp-timer-text">0.0s</div>
     </div>
     <div class="lp-mistakes-info"></div>
   </div>
 
+  <!-- Gesamte Sequenz -->
   <div class="lp-section">
     <div class="lp-section-label">Gesamtsequenz:</div>
     <div class="lp-sequence-steps"></div>
   </div>
 
-  {{!-- AKTUELLE TASTE – das „Step“-Feld --}}
+  <!-- Aktuelle Taste (Step-Feld) -->
   <div class="lp-current-key-box">
     <div class="lp-current-key-icon">
       <div class="lp-current-key-icon-inner" data-key=""></div>
@@ -49,6 +51,7 @@
     <div class="lp-current-key-label">Aktuelle Taste</div>
   </div>
 
+  <!-- Status & Buttons -->
   <div class="lp-status-text">Bereit – klicke »Start«.</div>
 
   <div class="lp-buttons">
