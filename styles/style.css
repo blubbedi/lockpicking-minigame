@@ -7,6 +7,15 @@
   font-family: var(--font-primary);
 }
 
+/* Hintergrund je nach (Nach-)Vorteil (optional) */
+.lp-game-root.lp-game--normal {
+  background: #1f2428;
+}
+
+.lp-game-root.lp-game--disadvantage {
+  background: #281f1f;
+}
+
 /* Titel */
 .lp-title {
   margin: 0 0 4px;
@@ -67,11 +76,129 @@
   height: 100%;
   background: #4caf50;
   position: relative;
-  transition: width 0.04s linear, background-color 0.2s linear;
+  transition: width 0.04s linear;
 }
 
 /* Sekundenanzeige im Timer */
 .lp-timer-text {
   position: absolute;
   right: 6px;
-  to
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 2px black;
+  pointer-events: none;
+}
+
+/* Gesamt-Sequenz */
+.lp-sequence-steps {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-height: 28px;
+  padding: 4px 0;
+}
+
+.lp-sequence-step {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: #ddd;
+  border: 1px solid #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-sequence-step--success {
+  background: #4caf50;
+  border-color: #3e8e41;
+}
+
+/* Pfeil-Icon im Fortschritt */
+.lp-sequence-step-icon {
+  width: 18px;
+  height: 18px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* Aktuelle Taste – Box mittig */
+.lp-current-key-box {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;  /* zentriert auf der X-Achse */
+  text-align: center;
+}
+
+/* Das eigentliche Step-Feld */
+.lp-current-key-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 1px;
+  border: 1px solid #000;
+  background: #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bild innerhalb des Felds */
+.lp-current-key-icon-inner {
+  width: 40px;
+  height: 40px;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+
+/* sanftes Glow-Pulsieren (optional, wenn du später glow-active nutzt) */
+@keyframes lp-glow-pulse {
+  0%   { box-shadow: 0 0 4px rgba(0,255,170,0.4); }
+  50%  { box-shadow: 0 0 12px rgba(0,255,170,0.8); }
+  100% { box-shadow: 0 0 4px rgba(0,255,170,0.4); }
+}
+
+/* Glow aktiv, wenn Spiel läuft */
+.lp-current-key-icon.glow-active {
+  animation: lp-glow-pulse 1.2s infinite ease-in-out;
+}
+
+/* Status-Text */
+.lp-status-text {
+  text-align: center;
+  margin: 8px 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Buttons */
+.lp-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.lp-btn {
+  padding: 5px 12px;
+  background: #e5e5e5;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.lp-btn:hover { background: #d4d4d4; }
+
+.lp-btn--primary {
+  background: #3f51b5;
+  border-color: #2f409e;
+  color: white;
+}
+
+.lp-btn--primary:hover {
+  background: #3648b0;
+}
