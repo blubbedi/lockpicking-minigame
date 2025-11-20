@@ -9,7 +9,6 @@
       <span class="lp-tag lp-tag--dc">DC: {{dc}}</span>
       <span class="lp-tag lp-tag--bonus">Bonus: {{bonus}}</span>
 
-      {{!-- Verlässliches Talent anzeigen, wenn aktiv --}}
       {{#if reliableTalent}}
         <span class="lp-tag lp-tag--reliable">Verlässliches Talent</span>
       {{/if}}
@@ -29,12 +28,9 @@
 
   <div class="lp-section">
     <div class="lp-section-label">Fortschritt:</div>
-
-    <!-- TIMER-BALKEN MIT SEKUNDENANZEIGE -->
     <div class="lp-timer-bar">
-      <div class="lp-timer-fill">
-        <span class="lp-timer-text"></span>
-      </div>
+      <div class="lp-timer-fill"></div>
+      <span class="lp-timer-text">–</span>
     </div>
   </div>
 
@@ -49,6 +45,9 @@
     </div>
     <div class="lp-current-key-label">Aktuelle Taste</div>
   </div>
+
+  {{!-- Anzeige der Fehlertoleranz (wird von main.js befüllt) --}}
+  <div class="lp-mistakes-info"></div>
 
   <div class="lp-status-text">Bereit – klicke »Start«.</div>
 
