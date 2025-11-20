@@ -118,11 +118,14 @@
   background-position: center;
   background-size: contain;
 }
-
-/* Aktuelle Taste */
 .lp-current-key-box {
-  text-align: center;
   margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;  /* zentriert auf der X-Achse */
+  text-align: center;
+}
+
 }
 
 .lp-current-key-icon {
@@ -177,4 +180,5 @@
 .lp-btn--primary:hover {
   background: #3648b0;
 }
+
 
