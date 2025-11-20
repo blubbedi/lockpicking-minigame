@@ -127,7 +127,7 @@
 .lp-current-key-icon {
   width: 64px;
   height: 64px;
-  border-radius: 8px;
+  border-radius: 1px;
   border: 1px solid #000;
   background: #ddd;
   display: flex;
@@ -176,6 +176,7 @@
 .lp-btn--primary:hover {
   background: #3648b0;
 }
+
 
 
 
