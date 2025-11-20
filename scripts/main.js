@@ -62,6 +62,21 @@ Hooks.once("ready", () => {
 });
 
 /* ========================================================================== */
+/*                     HILFSFUNKTION: RELIABLE TALENT-CHECK                   */
+/* ========================================================================== */
+
+/**
+ * Prüft, ob der Actor das Rogue-Feature "Reliable Talent" besitzt.
+ * Wir suchen nach einem Feat / Klassenfeature, dessen Name "reliable" enthält.
+ */
+function actorHasReliableTalent(actor) {
+  return actor.items.some((it) =>
+    (it.type === "feat" || it.type === "classFeature") &&
+    (it.name || "").toLowerCase().includes("reliable")
+  );
+}
+
+/* ========================================================================== */
 /*                 TOOL-BESITZ / ÜBUNG / BONUS / NACHTEIL                     */
 /* ========================================================================== */
 
@@ -80,12 +95,9 @@ Hooks.once("ready", () => {
  *   profBonus: number,
  *   hasToolInventory: bool,
  *   hasToolsEntry: bool,
- *   itemProfLevel: number,
- *   toolsProfLevel: number,
  *   proficient: bool,
  *   expert: bool,
  *   totalBonus: number,
- *   trainingBonus: number,   // nur der Teil aus Proficiency/Expertise
  *   disadvantage: bool
  * }
  */
@@ -190,7 +202,6 @@ function getThievesToolsInfo(actor) {
       proficient: false,
       expert: false,
       totalBonus: 0,
-      trainingBonus: 0,
       disadvantage: true
     };
     console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
@@ -211,9 +222,6 @@ function getThievesToolsInfo(actor) {
     disadvantage = true;
   }
 
-  // Übungsbonus = alles, was NICHT der Dex-Mod ist (also Proficiency/Expertise-Anteil)
-  const trainingBonus = Math.max(0, totalBonus - dexMod);
-
   const info = {
     dexMod,
     profBonus,
@@ -224,7 +232,6 @@ function getThievesToolsInfo(actor) {
     proficient,
     expert,
     totalBonus,
-    trainingBonus,
     disadvantage
   };
 
@@ -314,7 +321,6 @@ class LockpickingConfigApp extends FormApplication {
         return;
       }
 
-      // --- Tool-Infos ermitteln ---
       const info = getThievesToolsInfo(actor);
 
       if (!info.hasToolInventory && !info.hasToolsEntry) {
@@ -328,9 +334,23 @@ class LockpickingConfigApp extends FormApplication {
       const bonus = info.totalBonus;
       const disadvantage = info.disadvantage;
 
-      // Übungsbonus (ohne Dex) → Fehlertoleranz
-      const trainingBonus = info.trainingBonus ?? 0;
-      const allowedMistakes = Math.max(0, Math.floor(trainingBonus / 2));
+      // "Übungsbonus" = alles außer DEX-Mod
+      let trainingBonus = 0;
+      if (info.expert) {
+        trainingBonus = info.profBonus * 2;
+      } else if (info.proficient) {
+        trainingBonus = info.profBonus;
+      } else {
+        trainingBonus = 0;
+      }
+
+      // Reliable Talent nur, wenn Feature wirklich vorhanden
+      const hasReliable = actorHasReliableTalent(actor);
+
+      let allowedMistakes = 0;
+      if (hasReliable) {
+        allowedMistakes = Math.max(0, Math.floor(trainingBonus / 2));
+      }
 
       // Check: Kann der DC überhaupt erreicht werden? (max Wurf = bonus + 20)
       const maxRoll = bonus + 20;
@@ -354,14 +374,15 @@ class LockpickingConfigApp extends FormApplication {
         bonus,
         disadvantage,
         trainingBonus,
+        hasReliable,
         allowedMistakes,
         info
       });
 
       const content =
         `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
-        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}, ` +
-        `Fehlertoleranz: ${allowedMistakes}).`;
+        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}` +
+        `${hasReliable ? `, Fehlertoleranz: ${allowedMistakes}` : ""}).`;
 
       await ChatMessage.create({
         content,
@@ -405,9 +426,9 @@ class LockpickingGameApp extends Application {
     this.gameStarted = false;
     this.finished = false;
 
-    // Fehlertoleranz (aus Config)
+    // Fehlertoleranz (Reliable Talent)
     this.allowedMistakes = Number(config.allowedMistakes ?? 0);
-    this.usedMistakes = 0;
+    this.mistakesMade = 0;
 
     this._raf = null;
     this._lastTs = null;
@@ -473,6 +494,8 @@ class LockpickingGameApp extends Application {
     steps = Math.max(3, Math.min(12, steps));
 
     // 2) Grundzeit (in Sekunden)
+    // DC10 -> steps=5 -> grundZeit=5s
+    // +3 Steps -> +1 Sekunde
     let baseSeconds = 5 + (steps - 5) / 3;
 
     // 3) Bonus-Zeit: 0,5 Sekunden pro Bonuspunkt
@@ -518,6 +541,7 @@ class LockpickingGameApp extends Application {
     this._statusText = html.find(".lp-status-text")[0];
     this._startButton = html.find('[data-action="start-game"]')[0];
     this._cancelButton = html.find('[data-action="cancel-game"]')[0];
+    this._mistakesInfo = html.find(".lp-mistakes-info")[0]; // optionales Feld im Template
 
     if (this._startButton) {
       this._startButton.addEventListener("click", this._onClickStart.bind(this));
@@ -532,14 +556,10 @@ class LockpickingGameApp extends Application {
     document.addEventListener("keydown", this._keyHandler);
 
     if (this._statusText) {
-      if (this.allowedMistakes > 0) {
-        this._statusText.textContent =
-          `Bereit – klicke »Start«, um zu beginnen. Fehlertoleranz: ${this.allowedMistakes}.`;
-      } else {
-        this._statusText.textContent =
-          "Bereit – klicke »Start«, um zu beginnen. Keine Fehlertoleranz.";
-      }
+      this._statusText.textContent = "Bereit – klicke »Start«, um zu beginnen.";
     }
+
+    this._updateMistakesInfo();
   }
 
   close(options) {
@@ -557,7 +577,6 @@ class LockpickingGameApp extends Application {
     this._setupDifficulty();
     this._renderSequencePlaceholders();
     this.currentIndex = 0;
-    this.usedMistakes = 0;
     this._updateCurrentKeyIcon();
 
     this.gameStarted = true;
@@ -565,13 +584,7 @@ class LockpickingGameApp extends Application {
     this._lastTs = null;
 
     if (this._statusText) {
-      if (this.allowedMistakes > 0) {
-        this._statusText.textContent =
-          `Minispiel läuft – drücke die angezeigten Pfeiltasten. Fehler erlaubt: ${this.allowedMistakes}.`;
-      } else {
-        this._statusText.textContent =
-          "Minispiel läuft – drücke die angezeigten Pfeiltasten. Fehler sind nicht erlaubt.";
-      }
+      this._statusText.textContent = "Minispiel läuft – drücke die angezeigten Pfeiltasten.";
     }
     if (this._startButton) {
       this._startButton.disabled = true;
@@ -607,6 +620,16 @@ class LockpickingGameApp extends Application {
     const path = ARROW_ICON_PATHS[key];
     this._currentKeyIcon.dataset.key = key || "";
     this._currentKeyIcon.style.backgroundImage = path ? `url("${path}")` : "none";
+  }
+
+  _updateMistakesInfo() {
+    if (!this._mistakesInfo) return;
+    if (this.allowedMistakes <= 0) {
+      this._mistakesInfo.textContent = "";
+      return;
+    }
+    const remaining = Math.max(0, this.allowedMistakes - this.mistakesMade);
+    this._mistakesInfo.textContent = `Fehler erlaubt: ${remaining}/${this.allowedMistakes}`;
   }
 
   /* ------------------------------- Timer-Tick ----------------------------- */
@@ -648,21 +671,26 @@ class LockpickingGameApp extends Application {
 
     const expected = this.sequence[this.currentIndex];
     if (event.key !== expected) {
-      // Fehlertoleranz prüfen
-      if (this.usedMistakes < this.allowedMistakes) {
-        this.usedMistakes++;
+      // Fehler: ggf. von Fehlertoleranz aufgefangen
+      if (this.mistakesMade < this.allowedMistakes) {
+        this.mistakesMade++;
+        this._updateMistakesInfo();
+
         if (this._statusText) {
           this._statusText.textContent =
-            `Falsche Taste – Fehler benutzt (${this.usedMistakes}/${this.allowedMistakes}). Weiter!`;
+            `Falsche Taste (${this.mistakesMade}/${this.allowedMistakes}) – versuch es nochmal.`;
         }
-        // Sequenz bleibt gleich, Zeit läuft weiter.
+
+        // Spieler bleibt auf demselben Step, verliert nur Zeit
         return;
       }
 
-      this._finish(false, "Falsche Taste gedrückt (keine Fehlertoleranz mehr).");
+      // Keine Fehlertoleranz mehr → harter Fail
+      this._finish(false, "Falsche Taste gedrückt.");
       return;
     }
 
+    // Richtige Taste
     this._markStepSuccess(this.currentIndex);
     this.currentIndex++;
 
@@ -714,7 +742,10 @@ class LockpickingGameApp extends Application {
       `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
       `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}.<br>` +
       `Quick-Time-Event mit ${this.sequence.length} Eingaben (Pfeiltasten).<br>` +
-      `Fehlertoleranz: ${this.allowedMistakes}, tatsächlich genutzte Fehler: ${this.usedMistakes}.<br>` +
+      (this.allowedMistakes > 0
+        ? `Fehlertoleranz (Reliable Talent): ${this.allowedMistakes} Fehler insgesamt erlaubt.<br>`
+        : "") +
+      `Tatsächliche Fehler: ${this.mistakesMade}.<br>` +
       `Hinweis: ${reason}<br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>.`;
 
