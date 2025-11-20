@@ -387,6 +387,19 @@ class LockpickingGameApp extends Application {
     this.currentIndex = 0;
     this._updateCurrentKeyIcon();
 
+      _highlightCurrentStep() {
+    if (!this._seq) return;
+
+    // alle "current"-Marker entfernen
+    this._seq.querySelectorAll(".lp-sequence-step--current").forEach(el => {
+      el.classList.remove("lp-sequence-step--current");
+    });
+
+    const el = this._seq.querySelector(`[data-index="${this.currentIndex}"]`);
+    if (el) el.classList.add("lp-sequence-step--current");
+  }
+
+
     this._status.textContent = "Los geht’s!";
     this._lastTs = null;
 
