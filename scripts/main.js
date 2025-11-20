@@ -1,5 +1,5 @@
 /**
- * Lockpicking Minigame - main.js (stabile Version mit visueller Hervorhebung + GM-Spectator)
+ * Lockpicking Minigame - main.js (stabile Version mit visueller Hervorhebung + Live-Spectator)
  * Ausgangsbasis: funktionierende Version ohne Glow/Puls/Sonderfarben
  */
 
@@ -49,18 +49,17 @@ Hooks.once("ready", () => {
     }
   };
 
-  // ChatMessage-Flag öffnet Spiel beim Zielspieler und Spectator-Fenster bei GMs
+  // ChatMessage-Flag öffnet Spiel beim Zielspieler und Spectator-Fenster bei allen anderen
   Hooks.on("createChatMessage", (msg) => {
     const data = msg.flags?.[LOCKPICKING_NAMESPACE];
     if (!data) return;
+    if (data.action !== "openGame") return;
 
     const actor = game.actors.get(data.actorId);
     if (!actor) return;
 
     const isTarget = game.user.id === data.userId;
-    const isSpectator = game.user.isGM && !isTarget;
-
-    if (!isTarget && !isSpectator) return;
+    const isSpectator = !isTarget; // alle anderen (GM + andere Spieler) sind Spectators
 
     new LockpickingGameApp(actor, data, { spectator: isSpectator }).render(true);
   });
@@ -284,7 +283,7 @@ class LockpickingConfigApp extends FormApplication {
     let allowedMistakes = 0;
     if (hasReliable) allowedMistakes = Math.floor(trainingBonus / 2);
 
-    // NEU: eindeutige Run-ID für diesen Lockpicking-Versuch
+    // eindeutige Run-ID für diesen Lockpicking-Versuch
     const runId = foundry.utils.randomID();
 
     await ChatMessage.create({
@@ -588,7 +587,6 @@ class LockpickingGameApp extends Application {
 
   _start() {
     if (this._spectator) return; // nur Spieler starten
-    // verhindert mehrfachen Start, solange das Spiel läuft
     if (this._running) return;
     this._running = true;
 
