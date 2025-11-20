@@ -53,7 +53,8 @@ Hooks.once("ready", () => {
       user: game.user.name,
       dc: data.dc,
       bonus: data.bonus,
-      disadvantage: data.disadvantage
+      disadvantage: data.disadvantage,
+      allowedMistakes: data.allowedMistakes
     });
 
     new LockpickingGameApp(actor, data).render(true);
@@ -84,6 +85,7 @@ Hooks.once("ready", () => {
  *   proficient: bool,
  *   expert: bool,
  *   totalBonus: number,
+ *   trainingBonus: number,   // nur der Teil aus Proficiency/Expertise
  *   disadvantage: bool
  * }
  */
@@ -188,6 +190,7 @@ function getThievesToolsInfo(actor) {
       proficient: false,
       expert: false,
       totalBonus: 0,
+      trainingBonus: 0,
       disadvantage: true
     };
     console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
@@ -208,6 +211,9 @@ function getThievesToolsInfo(actor) {
     disadvantage = true;
   }
 
+  // Übungsbonus = alles, was NICHT der Dex-Mod ist (also Proficiency/Expertise-Anteil)
+  const trainingBonus = Math.max(0, totalBonus - dexMod);
+
   const info = {
     dexMod,
     profBonus,
@@ -218,6 +224,7 @@ function getThievesToolsInfo(actor) {
     proficient,
     expert,
     totalBonus,
+    trainingBonus,
     disadvantage
   };
 
@@ -307,6 +314,7 @@ class LockpickingConfigApp extends FormApplication {
         return;
       }
 
+      // --- Tool-Infos ermitteln ---
       const info = getThievesToolsInfo(actor);
 
       if (!info.hasToolInventory && !info.hasToolsEntry) {
@@ -320,6 +328,11 @@ class LockpickingConfigApp extends FormApplication {
       const bonus = info.totalBonus;
       const disadvantage = info.disadvantage;
 
+      // Übungsbonus (ohne Dex) → Fehlertoleranz
+      const trainingBonus = info.trainingBonus ?? 0;
+      const allowedMistakes = Math.max(0, Math.floor(trainingBonus / 2));
+
+      // Check: Kann der DC überhaupt erreicht werden? (max Wurf = bonus + 20)
       const maxRoll = bonus + 20;
       if (maxRoll < dc) {
         ui.notifications.warn(
@@ -340,12 +353,15 @@ class LockpickingConfigApp extends FormApplication {
         dc,
         bonus,
         disadvantage,
+        trainingBonus,
+        allowedMistakes,
         info
       });
 
       const content =
         `Lockpicking-Minispiel für <b>${actor.name}</b> gestartet ` +
-        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}).`;
+        `(DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}, ` +
+        `Fehlertoleranz: ${allowedMistakes}).`;
 
       await ChatMessage.create({
         content,
@@ -357,7 +373,8 @@ class LockpickingConfigApp extends FormApplication {
             actorId,
             dc,
             bonus,
-            disadvantage
+            disadvantage,
+            allowedMistakes
           }
         }
       });
@@ -378,7 +395,7 @@ class LockpickingGameApp extends Application {
   constructor(actor, config, options = {}) {
     super(options);
     this.actor = actor;
-    this.config = config; // { dc, bonus, disadvantage, ... }
+    this.config = config; // { dc, bonus, disadvantage, allowedMistakes, ... }
 
     // QTE-Status
     this.sequence = [];
@@ -387,6 +404,10 @@ class LockpickingGameApp extends Application {
     this.remainingMs = 0;
     this.gameStarted = false;
     this.finished = false;
+
+    // Fehlertoleranz (aus Config)
+    this.allowedMistakes = Number(config.allowedMistakes ?? 0);
+    this.usedMistakes = 0;
 
     this._raf = null;
     this._lastTs = null;
@@ -412,7 +433,8 @@ class LockpickingGameApp extends Application {
       actorName: this.actor.name,
       dc,
       bonus,
-      disadvantage
+      disadvantage,
+      allowedMistakes: this.allowedMistakes
     };
   }
 
@@ -430,12 +452,12 @@ class LockpickingGameApp extends Application {
 
   /**
    * Zeit & Länge aus DC / Bonus / Nachteil bestimmen
-   *
    * Vorgaben:
-   * - DC 10 ≈ 5 Steps
-   *   → steps = round(0,5 * DC)
-   * - Grundzeit: 5 s bei 5 Steps
-   *   → baseSeconds = 5 + (steps - 5) / 3
+   * - DC 10 = 5 Steps
+   * - DC +1 = +0,5 Steps (im Schnitt → wir runden auf ganze Steps)
+   *   → steps ≈ 0,5 * DC
+   * - Grundzeit: 5 s bei 5 Steps, +1 s je weitere 3 Steps
+   *   → grundZeit = 5 + (steps - 5) / 3
    * - Bonus (DEX + Prof bzw. nur DEX ungeübt):
    *   → +0,5 s pro Bonuspunkt
    * - Nachteil am Ende: gesamtZeit * 0,6
@@ -444,15 +466,13 @@ class LockpickingGameApp extends Application {
     const { dc, bonus, disadvantage } = this.config;
 
     // 1) Steps aus DC ableiten
-    const rawSteps = 0.5 * dc;            // DC 10 → 5
-    let steps = Math.round(rawSteps);     // gewollt: Math.round
+    const rawSteps = 0.5 * dc; // DC 10 => 5 Steps
+    let steps = Math.round(rawSteps);
 
-    // Untere Schranke, damit nicht 0 Steps entstehen
-    steps = Math.max(1, steps);
+    // Sicherheits-Clamp
+    steps = Math.max(3, Math.min(12, steps));
 
     // 2) Grundzeit (in Sekunden)
-    // DC10 -> steps=5 -> baseSeconds=5s
-    // je 3 zusätzliche Steps → +1 Sekunde
     let baseSeconds = 5 + (steps - 5) / 3;
 
     // 3) Bonus-Zeit: 0,5 Sekunden pro Bonuspunkt
@@ -481,6 +501,7 @@ class LockpickingGameApp extends Application {
       bonusSeconds,
       totalSeconds,
       totalTimeMs: this.totalTimeMs,
+      allowedMistakes: this.allowedMistakes,
       sequence: this.sequence
     });
   }
@@ -508,11 +529,16 @@ class LockpickingGameApp extends Application {
       });
     }
 
-    // Tastatur registrieren (Auswertung erst, wenn Spiel gestartet wurde)
     document.addEventListener("keydown", this._keyHandler);
 
     if (this._statusText) {
-      this._statusText.textContent = "Bereit – klicke »Start«, um zu beginnen.";
+      if (this.allowedMistakes > 0) {
+        this._statusText.textContent =
+          `Bereit – klicke »Start«, um zu beginnen. Fehlertoleranz: ${this.allowedMistakes}.`;
+      } else {
+        this._statusText.textContent =
+          "Bereit – klicke »Start«, um zu beginnen. Keine Fehlertoleranz.";
+      }
     }
   }
 
@@ -531,6 +557,7 @@ class LockpickingGameApp extends Application {
     this._setupDifficulty();
     this._renderSequencePlaceholders();
     this.currentIndex = 0;
+    this.usedMistakes = 0;
     this._updateCurrentKeyIcon();
 
     this.gameStarted = true;
@@ -538,7 +565,13 @@ class LockpickingGameApp extends Application {
     this._lastTs = null;
 
     if (this._statusText) {
-      this._statusText.textContent = "Minispiel läuft – drücke die angezeigten Pfeiltasten.";
+      if (this.allowedMistakes > 0) {
+        this._statusText.textContent =
+          `Minispiel läuft – drücke die angezeigten Pfeiltasten. Fehler erlaubt: ${this.allowedMistakes}.`;
+      } else {
+        this._statusText.textContent =
+          "Minispiel läuft – drücke die angezeigten Pfeiltasten. Fehler sind nicht erlaubt.";
+      }
     }
     if (this._startButton) {
       this._startButton.disabled = true;
@@ -615,7 +648,18 @@ class LockpickingGameApp extends Application {
 
     const expected = this.sequence[this.currentIndex];
     if (event.key !== expected) {
-      this._finish(false, "Falsche Taste gedrückt.");
+      // Fehlertoleranz prüfen
+      if (this.usedMistakes < this.allowedMistakes) {
+        this.usedMistakes++;
+        if (this._statusText) {
+          this._statusText.textContent =
+            `Falsche Taste – Fehler benutzt (${this.usedMistakes}/${this.allowedMistakes}). Weiter!`;
+        }
+        // Sequenz bleibt gleich, Zeit läuft weiter.
+        return;
+      }
+
+      this._finish(false, "Falsche Taste gedrückt (keine Fehlertoleranz mehr).");
       return;
     }
 
@@ -670,6 +714,7 @@ class LockpickingGameApp extends Application {
       `Lockpicking-Minispiel – ${this.actor.name} versucht ein Schloss zu knacken.<br>` +
       `DC ${dc}, Bonus ${bonus}${disadvantage ? ", mit Nachteil" : ", ohne Nachteil"}.<br>` +
       `Quick-Time-Event mit ${this.sequence.length} Eingaben (Pfeiltasten).<br>` +
+      `Fehlertoleranz: ${this.allowedMistakes}, tatsächlich genutzte Fehler: ${this.usedMistakes}.<br>` +
       `Hinweis: ${reason}<br>` +
       `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b>.`;
 
