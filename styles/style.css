@@ -201,6 +201,35 @@
   }
 }
 
+/* negativer „Error“-Effekt bei falscher Taste */
+.lp-current-key-icon--error {
+  animation: lp-key-error 0.18s ease-out;
+}
+
+@keyframes lp-key-error {
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+  }
+  20% {
+    transform: translateX(-3px);
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.9); /* rot */
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+  }
+}
+
 /* =========================================================
  * STATUS + BUTTONS
  * ========================================================= */
