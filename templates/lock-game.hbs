@@ -9,6 +9,11 @@
       <span class="lp-tag lp-tag--dc">DC: {{dc}}</span>
       <span class="lp-tag lp-tag--bonus">Bonus: {{bonus}}</span>
 
+      {{!-- Verlässliches Talent anzeigen, wenn aktiv --}}
+      {{#if reliableTalent}}
+        <span class="lp-tag lp-tag--reliable">Verlässliches Talent</span>
+      {{/if}}
+
       {{#if disadvantage}}
         <span class="lp-tag lp-tag--bad">mit Nachteil</span>
       {{else}}
