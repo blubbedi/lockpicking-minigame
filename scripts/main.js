@@ -136,15 +136,10 @@ function getThievesToolsInfo(actor) {
     toolsProfLevel = Math.max(toolsProfLevel, best);
   }
 
-  // Level aus system.tools auf Proficiency/Expertise mappen
+  // Nur echte Werte aus system.tools auswerten
   if (toolsProfLevel >= 2) {
     expert = true;
   } else if (toolsProfLevel >= 1) {
-    proficient = true;
-  } else if (hasToolsEntry && !expert && !proficient) {
-    // WICHTIGER FALLBACK:
-    // Viele dnd5e-Sheets haben zwar einen Eintrag in system.tools für Diebeswerkzeuge,
-    // aber alle Werte sind 0. Der Eintrag bedeutet dann trotzdem "geübt".
     proficient = true;
   }
 
