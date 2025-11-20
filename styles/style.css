@@ -41,10 +41,12 @@
 .lp-tag--bad { background: #ffd0d0; color: #7d1111; }
 
 .lp-tag--reliable {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #ffd27f;
+  background: #fff7e0;      /* helles Gold */
+  border-color: #ffc966;
+  color: #8a5a00;
   font-weight: 600;
+}
+
 }
 
 /* =========================================================
@@ -175,3 +177,4 @@
 .lp-btn--primary:hover {
   background: #3648b0;
 }
+
