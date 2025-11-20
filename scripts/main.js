@@ -79,6 +79,8 @@ Hooks.once("ready", () => {
  *   profBonus: number,
  *   hasToolInventory: bool,
  *   hasToolsEntry: bool,
+ *   itemProfLevel: number,
+ *   toolsProfLevel: number,
  *   proficient: bool,
  *   expert: bool,
  *   totalBonus: number,
@@ -428,12 +430,12 @@ class LockpickingGameApp extends Application {
 
   /**
    * Zeit & Länge aus DC / Bonus / Nachteil bestimmen
+   *
    * Vorgaben:
-   * - DC 10 = 5 Steps
-   * - DC +1 = +0,5 Steps (im Schnitt → wir runden auf ganze Steps)
-   *   → steps ≈ 0,5 * DC
-   * - Grundzeit: 5 s bei 5 Steps, +1 s je weitere 3 Steps
-   *   → grundZeit = 5 + (steps - 5) / 3
+   * - DC 10 ≈ 5 Steps
+   *   → steps = round(0,5 * DC)
+   * - Grundzeit: 5 s bei 5 Steps
+   *   → baseSeconds = 5 + (steps - 5) / 3
    * - Bonus (DEX + Prof bzw. nur DEX ungeübt):
    *   → +0,5 s pro Bonuspunkt
    * - Nachteil am Ende: gesamtZeit * 0,6
@@ -442,15 +444,15 @@ class LockpickingGameApp extends Application {
     const { dc, bonus, disadvantage } = this.config;
 
     // 1) Steps aus DC ableiten
-    const rawSteps = 0.5 * dc; // DC 10 => 5 Steps
-    let steps = Math.round(rawSteps);
+    const rawSteps = 0.5 * dc;            // DC 10 → 5
+    let steps = Math.round(rawSteps);     // gewollt: Math.round
 
-    // Sicherheits-Clamp
-    steps = Math.max(3, Math.min(12, steps));
+    // Untere Schranke, damit nicht 0 Steps entstehen
+    steps = Math.max(1, steps);
 
     // 2) Grundzeit (in Sekunden)
-    // DC10 -> steps=5 -> grundZeit=5s
-    // +3 Steps -> +1 Sekunde
+    // DC10 -> steps=5 -> baseSeconds=5s
+    // je 3 zusätzliche Steps → +1 Sekunde
     let baseSeconds = 5 + (steps - 5) / 3;
 
     // 3) Bonus-Zeit: 0,5 Sekunden pro Bonuspunkt
@@ -506,6 +508,7 @@ class LockpickingGameApp extends Application {
       });
     }
 
+    // Tastatur registrieren (Auswertung erst, wenn Spiel gestartet wurde)
     document.addEventListener("keydown", this._keyHandler);
 
     if (this._statusText) {
