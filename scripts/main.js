@@ -68,15 +68,24 @@ Hooks.once("ready", () => {
 
 /**
  * Prüft, ob der Actor das Rogue-Feature "Reliable Talent" besitzt.
- * Wir suchen nach einem Feat / Klassenfeature, dessen Name "reliable" enthält.
- * (Kannst du bei Bedarf an die deutsche Bezeichnung anpassen.)
+ * Unterstützt englische und deutsche Bezeichnungen.
  */
 function actorHasReliableTalent(actor) {
-  return actor.items.some((it) =>
-    (it.type === "feat" || it.type === "classFeature") &&
-    (it.name || "").toLowerCase().includes("reliable")
-    (it.name || "").toLowerCase().includes("verlässlich")                      
-  );
+  return actor.items.some((it) => {
+    if (!(it.type === "feat" || it.type === "classFeature")) return false;
+
+    const name = (it.name || "").toLowerCase();
+
+    return (
+      // englische Varianten
+      name.includes("reliable talent") ||
+      name.includes("reliable") ||
+
+      // mögliche deutsche Varianten
+      name.includes("verlässliches talent") ||
+      name.includes("verlässlich")
+    );
+  });
 }
 
 /* ========================================================================== */
@@ -444,7 +453,7 @@ class LockpickingGameApp extends Application {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "lockpicking-game",
       classes: ["lockpicking-game"],
-      title: "Lockpicking",
+      title: "Schlossknacken",
       template: "modules/lockpicking-minigame/templates/lock-game.hbs",
       width: 420,
       height: "auto",
