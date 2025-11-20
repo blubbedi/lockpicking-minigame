@@ -47,6 +47,13 @@
   font-weight: 600;
 }
 
+/* kleine Erklärung unter den Tags (optional) */
+.lp-expl {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #333;
+}
+
 /* =========================================================
  * TIMER-BALKEN MIT SEKUNDENANZEIGE
  * ========================================================= */
@@ -81,6 +88,13 @@
   pointer-events: none;
 }
 
+/* Info über erlaubte Fehler */
+.lp-mistakes-info {
+  font-size: 11px;
+  margin-top: 2px;
+  color: #444;
+}
+
 /* =========================================================
  * GESAMT-SEQUENZ
  * ========================================================= */
@@ -102,11 +116,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .lp-sequence-step--success {
   background: #4caf50;
   border-color: #3e8e41;
+}
+
+/* NEU: aktueller Schritt – leichte Hervorhebung */
+.lp-sequence-step--current {
+  box-shadow: 0 0 4px #ffd54f, 0 0 8px #ffb300;
+  border-color: #ffb300;
+}
+
+/* NEU: (optional) expliziter Fehler-Step – falls später genutzt */
+.lp-sequence-step--fail {
+  background: #f44336;
+  border-color: #b71c1c;
 }
 
 /* Icon in Step */
@@ -139,6 +167,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* NEU: leichter Schatten für das Key-Feld */
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
 }
 
 .lp-current-key-icon-inner {
@@ -147,6 +177,8 @@
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
+  /* NEU: sanfter Schimmer um das aktuelle Symbol */
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
 }
 
 /* =========================================================
