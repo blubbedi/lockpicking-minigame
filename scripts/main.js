@@ -111,7 +111,6 @@ function getThievesToolsInfo(actor) {
   if (invTool) {
     hasToolInventory = true;
 
-    // dnd5e: meist 0, 0.5, 1, 2 – aber bei Tools oft 0
     const pRaw = getProp(invTool, "system.proficient");
     const pNum = Number(pRaw ?? 0);
 
@@ -137,7 +136,6 @@ function getThievesToolsInfo(actor) {
     const keyName = String(key ?? "").toLowerCase();
     const label = String(data.label ?? "").toLowerCase();
 
-    // versuche sowohl über Key als auch über Label Thieves' Tools zu erkennen
     const looksLikeThievesTool =
       keyName.includes("thief") ||
       keyName.includes("thieves") ||
@@ -150,9 +148,7 @@ function getThievesToolsInfo(actor) {
 
     hasToolsEntry = true;
 
-    // mögliche Felder, je nach dnd5e-Version / Modul
     const candidates = ["prof", "proficient", "value", "base"];
-
     let best = 0;
     for (const prop of candidates) {
       const raw = data[prop];
@@ -180,7 +176,6 @@ function getThievesToolsInfo(actor) {
   const hasAnyTool = hasToolInventory || hasToolsEntry;
 
   if (!hasAnyTool) {
-    // Kein Tool → später im Config-Dialog abfangen
     const info = {
       dexMod,
       profBonus,
@@ -207,7 +202,6 @@ function getThievesToolsInfo(actor) {
     totalBonus = dexMod + profBonus;
     disadvantage = false;
   } else {
-    // Tool vorhanden, aber keinerlei Übung:
     totalBonus = dexMod;
     disadvantage = true;
   }
@@ -311,7 +305,6 @@ class LockpickingConfigApp extends FormApplication {
         return;
       }
 
-      // --- Tool-Infos ermitteln ---
       const info = getThievesToolsInfo(actor);
 
       if (!info.hasToolInventory && !info.hasToolsEntry) {
@@ -325,7 +318,6 @@ class LockpickingConfigApp extends FormApplication {
       const bonus = info.totalBonus;
       const disadvantage = info.disadvantage;
 
-      // Check: Kann der DC überhaupt erreicht werden? (max Wurf = bonus + 20)
       const maxRoll = bonus + 20;
       if (maxRoll < dc) {
         ui.notifications.warn(
@@ -434,43 +426,56 @@ class LockpickingGameApp extends Application {
     return seq;
   }
 
-  /** Zeit & Länge aus DC / Bonus / Nachteil bestimmen */
+  /**
+   * Zeit & Länge aus DC / Bonus / Nachteil bestimmen
+   * Vorgaben:
+   * - DC 10 = 5 Steps
+   * - DC +1 = +0,5 Steps (im Schnitt → wir runden auf ganze Steps)
+   *   → steps ≈ 0,5 * DC
+   * - Grundzeit: 5 s bei 5 Steps, +1 s je weitere 3 Steps
+   *   → grundZeit = 5 + (steps - 5) / 3
+   * - Bonus (DEX + Prof bzw. nur DEX ungeübt):
+   *   → +0,5 s pro Bonuspunkt
+   * - Nachteil am Ende: gesamtZeit * 0,6
+   */
   _setupDifficulty() {
     const { dc, bonus, disadvantage } = this.config;
 
-    const baseDc = 10;
+    // 1) Steps aus DC ableiten
+    const rawSteps = 0.5 * dc; // DC 10 => 5 Steps
+    let steps = Math.round(rawSteps);
 
-    // DC 10 = 5 Steps, 5 Sekunden
-    // pro +1 DC → +1 Step, +0,5 Sekunden
-    let steps = 5 + (dc - baseDc);
-    let totalSeconds = 5 + (dc - baseDc) * 0.5;
+    // Sicherheits-Clamp
+    steps = Math.max(3, Math.min(12, steps));
 
-    // Sicherheitsgrenzen
-    steps = Math.max(3, Math.min(15, steps));
-    totalSeconds = Math.max(3, Math.min(20, totalSeconds));
+    // 2) Grundzeit (in Sekunden)
+    // DC10 -> steps=5 -> grundZeit=5s
+    // +3 Steps -> +1 Sekunde
+    let baseSeconds = 5 + (steps - 5) / 3;
 
-    // Bonus gibt NUR zusätzliche Zeit
-    const safeBonus = Number.isFinite(bonus) ? Math.max(0, bonus) : 0;
-    const bonusSeconds = Math.floor(safeBonus / 2);
-    totalSeconds += bonusSeconds;
+    // 3) Bonus-Zeit: 0,5 Sekunden pro Bonuspunkt
+    const effectiveBonus = Math.max(0, Number(bonus || 0));
+    const bonusSeconds = effectiveBonus * 0.5;
 
-    // Nachteil verkürzt am Ende die Gesamtzeit
+    let totalSeconds = baseSeconds + bonusSeconds;
+
+    // 4) Nachteil: Gesamtzeit härter machen
     if (disadvantage) {
-      totalSeconds *= 0.65; // z. B. 35 % weniger Zeit
+      totalSeconds *= 0.6;
     }
 
-    // Final clamp
-    totalSeconds = Math.max(1.5, Math.min(25, totalSeconds));
-
+    // 5) In Millisekunden umrechnen
     this.sequence = this._generateSequence(steps);
     this.totalTimeMs = Math.round(totalSeconds * 1000);
     this.remainingMs = this.totalTimeMs;
 
     console.log(`${LOCKPICKING_NAMESPACE} | QTE-Setup:`, {
       dc,
-      bonus: safeBonus,
+      bonus,
       disadvantage,
+      rawSteps,
       steps,
+      baseSeconds,
       bonusSeconds,
       totalSeconds,
       totalTimeMs: this.totalTimeMs,
@@ -501,7 +506,6 @@ class LockpickingGameApp extends Application {
       });
     }
 
-    // Tastatur erst nach Start auswerten
     document.addEventListener("keydown", this._keyHandler);
 
     if (this._statusText) {
