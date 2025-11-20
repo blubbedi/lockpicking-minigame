@@ -301,7 +301,7 @@ class LockpickingGameApp extends Application {
     this._raf = null;
     this._keyHandler = this._onKeyDown.bind(this);
 
-    // NEU: Flag, ob das Minigame gerade läuft
+    // Flag, ob das Minigame gerade läuft
     this._running = false;
     this._startBtn = null;
   }
@@ -402,9 +402,20 @@ class LockpickingGameApp extends Application {
   _flashCurrentKeyIcon() {
     if (!this._keyIconBox) return;
 
-    this._keyIconBox.classList.remove("lp-current-key-icon--hit");
+    // beide Effekte vorher entfernen
+    this._keyIconBox.classList.remove("lp-current-key-icon--hit", "lp-current-key-icon--error");
     void this._keyIconBox.offsetWidth;
     this._keyIconBox.classList.add("lp-current-key-icon--hit");
+  }
+
+  /* ---------------- ERROR-EFFEKT FÜR KEY-ICON ---------------- */
+
+  _flashErrorKeyIcon() {
+    if (!this._keyIconBox) return;
+
+    this._keyIconBox.classList.remove("lp-current-key-icon--hit", "lp-current-key-icon--error");
+    void this._keyIconBox.offsetWidth;
+    this._keyIconBox.classList.add("lp-current-key-icon--error");
   }
 
   /* ---------------- START GAME ---------------- */
@@ -509,6 +520,9 @@ class LockpickingGameApp extends Application {
     const expected = this.sequence[this.currentIndex];
 
     if (ev.key !== expected) {
+
+      // negatives Feedback bei falscher Taste
+      this._flashErrorKeyIcon();
 
       /* Fehlertoleranz */
       if (this.mistakesMade < this.allowedMistakes) {
