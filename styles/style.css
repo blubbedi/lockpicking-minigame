@@ -149,3 +149,10 @@
 .lp-btn--primary:hover {
   background: #3648b0;
 }
+.lp-tag--reliable {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffd27f;
+  font-weight: 600;
+}
+
