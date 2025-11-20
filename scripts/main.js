@@ -651,9 +651,10 @@ class LockpickingGameApp extends Application {
 
   /* ------------------------------- Timer-Tick ----------------------------- */
 
-  _tick(ts) {
+    _tick(ts) {
     if (!this.gameStarted || this.finished) return;
 
+    // Zeit runterzählen
     if (this._lastTs === null) {
       this._lastTs = ts;
     } else {
@@ -663,17 +664,32 @@ class LockpickingGameApp extends Application {
       if (this.remainingMs < 0) this.remainingMs = 0;
     }
 
-    // Balkenbreite anpassen
+    const ratio = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) : 0;
+
     if (this._timerFill) {
-      const pct = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) * 100 : 0;
-      this._timerFill.style.width = `${pct}%`;
+      // Breite des Balkens
+      this._timerFill.style.width = `${ratio * 100}%`;
+
+      // Farbe: Grün → Gelb → Rot
+      let r, g;
+      if (ratio > 0.6) {
+        // 0.6..1.0: (0,255,0) -> (255,255,0)
+        const t = (1 - ratio) / 0.4; // 0..1
+        r = Math.round(255 * t);
+        g = 255;
+      } else {
+        // 0..0.6: (255,255,0) -> (255,0,0)
+        const t = ratio / 0.6; // 0..1
+        r = 255;
+        g = Math.round(255 * t);
+      }
+      this._timerFill.style.backgroundColor = `rgb(${r}, ${g}, 0)`;
     }
 
-    // Sekundenanzeige aktualisieren
+    // Sekundenanzeige im Balken (falls aus vorherigem Schritt schon vorhanden)
     if (this._timerText) {
       const seconds = this.remainingMs / 1000;
-      const display = seconds.toFixed(1); // eine Nachkommastelle
-      this._timerText.textContent = `${display}s`;
+      this._timerText.textContent = `${seconds.toFixed(1)}s`;
     }
 
     if (this.remainingMs <= 0) {
@@ -683,6 +699,7 @@ class LockpickingGameApp extends Application {
 
     this._raf = requestAnimationFrame(this._tick.bind(this));
   }
+
 
   /* ----------------------------- Tastatureingabe -------------------------- */
 
