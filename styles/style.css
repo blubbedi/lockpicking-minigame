@@ -270,7 +270,7 @@
 }
 
 /* =========================================================
- * FENSTER-LOOK: Gealtertes Metall (nur Lockpicking-App)
+ * FENSTER-RAHMEN – Schlossgehäuse / gealtertes Metall (NEU)
  * ========================================================= */
 
 .window-app#lockpicking-game .window-content {
@@ -278,117 +278,39 @@
   padding: 8px;
   background:
     radial-gradient(circle at top left, rgba(255,255,255,0.12), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(0,0,0,0.4), transparent 60%),
-    url("../textures/metal-aged.jpg");
+    radial-gradient(circle at bottom right, rgba(0,0,0,0.35), transparent 60%),
+    url("modules/lockpicking-minigame/textures/metal-aged.jpg");
   background-size: cover;
-  border-radius: 6px;
+  border-radius: 8px;
+  border: 4px solid rgba(25, 25, 25, 0.95);
   box-shadow:
-    0 0 0 1px rgba(0,0,0,0.6),
-    0 0 12px rgba(0,0,0,0.8);
+    inset 0 0 24px rgba(0, 0, 0, 0.9),
+    inset 0 0 6px rgba(255, 255, 255, 0.18),
+    0 0 18px rgba(0, 0, 0, 0.85);
   overflow: hidden;
 }
 
-/* leichte Vignette */
-.window-app#lockpicking-game .window-content::before {
+/* Nieten / Schrauben in zwei Ecken (oben links & unten rechts) */
+.window-app#lockpicking-game .window-content::before,
+.window-app#lockpicking-game .window-content::after {
   content: "";
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   background:
-    linear-gradient(
-      to bottom,
-      rgba(0,0,0,0.35) 0%,
-      rgba(0,0,0,0.15) 30%,
-      rgba(0,0,0,0.25) 100%
-    );
-  mix-blend-mode: multiply;
+    radial-gradient(circle at 30% 30%, #777, #333 55%, #000 100%);
+  box-shadow:
+    inset 0 0 3px rgba(0,0,0,0.9),
+    0 0 4px rgba(0,0,0,0.8);
 }
 
-.window-app#lockpicking-game .lp-game-root {
-  position: relative;
-  z-index: 1;
-  padding: 4px;
+.window-app#lockpicking-game .window-content::before {
+  top: 6px;
+  left: 6px;
 }
 
-/* Titel / Texte auf Metall */
-.window-app#lockpicking-game .lp-title {
-  color: #f5f5f5;
-  text-shadow: 0 0 3px rgba(0,0,0,0.9);
-  letter-spacing: 0.03em;
-}
-
-.window-app#lockpicking-game .lp-meta,
-.window-app#lockpicking-game .lp-section-label,
-.window-app#lockpicking-game .lp-status-text,
-.window-app#lockpicking-game .lp-expl {
-  color: #f3f3f3;
-  text-shadow: 0 0 3px rgba(0,0,0,0.8);
-}
-
-/* Tags als Metallplättchen */
-.window-app#lockpicking-game .lp-tag {
-  background: linear-gradient(to bottom, #555, #333);
-  border-color: #111;
-  color: #f5f5f5;
-  box-shadow: 0 0 4px rgba(0,0,0,0.9);
-}
-
-.window-app#lockpicking-game .lp-tag--dc {
-  background: linear-gradient(to bottom, #607d8b, #37474f);
-}
-
-.window-app#lockpicking-game .lp-tag--bonus {
-  background: linear-gradient(to bottom, #689f38, #33691e);
-}
-
-.window-app#lockpicking-game .lp-tag--good {
-  background: linear-gradient(to bottom, #689f38, #2e7d32);
-}
-
-.window-app#lockpicking-game .lp-tag--bad {
-  background: linear-gradient(to bottom, #e53935, #b71c1c);
-}
-
-.window-app#lockpicking-game .lp-tag--reliable {
-  background: linear-gradient(to bottom, #ffc107, #ff9800);
-  border-color: #5d3a00;
-  color: #2b1a00;
-}
-
-/* Fortschrittsbalken im Metallrahmen */
-.window-app#lockpicking-game .lp-timer-bar {
-  background: #111;
-  border-color: #000;
-  box-shadow: 0 0 6px rgba(0,0,0,0.9) inset;
-}
-
-.window-app#lockpicking-game .lp-timer-fill {
-  background: linear-gradient(to right, #8bc34a, #cddc39);
-}
-
-/* Buttons im „Schloss“-Look */
-.window-app#lockpicking-game .lp-btn {
-  background: linear-gradient(to bottom, #555, #333);
-  border-color: #000;
-  color: #eee;
-  text-shadow: 0 0 2px rgba(0,0,0,0.9);
-}
-
-.window-app#lockpicking-game .lp-btn:hover {
-  background: linear-gradient(to bottom, #666, #3d3d3d);
-}
-
-.window-app#lockpicking-game .lp-btn--primary {
-  background: linear-gradient(to bottom, #3949ab, #1a237e);
-  border-color: #0d133f;
-}
-
-.window-app#lockpicking-game .lp-btn--primary:hover {
-  background: linear-gradient(to bottom, #3f51b5, #283593);
-}
-
-/* Felder / Boxen leicht an Metall-Look anpassen */
-.window-app#lockpicking-game .lp-current-key-icon,
-.window-app#lockpicking-game .lp-sequence-step {
-  background: rgba(230,230,230,0.9);
+.window-app#lockpicking-game .window-content::after {
+  bottom: 6px;
+  right: 6px;
 }
