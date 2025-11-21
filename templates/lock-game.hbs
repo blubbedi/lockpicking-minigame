@@ -21,6 +21,34 @@
       {{/if}}
     </div>
 
+    {{!-- NEU: Bonus-Zusammensetzung (DEX + Übung/Expertise) --}}
+    {{#if bonusBreakdown}}
+      <p class="lp-expl">
+        Bonus-Zusammensetzung:
+        DEX {{numberFormat bonusBreakdown.dexMod sign=true}}
+        {{#if bonusBreakdown.profPart}}
+          + {{bonusBreakdown.profLabel}} {{numberFormat bonusBreakdown.profPart sign=true}}
+        {{/if}}
+        = <b>{{numberFormat bonusBreakdown.totalBonus sign=true}}</b>
+      </p>
+    {{/if}}
+
+    {{!-- NEU: Erklärung Übungsbonus / Reliable Talent / Fehlversuche --}}
+    {{#if reliableInfo}}
+      <p class="lp-expl">
+        Übungsbonus für Diebeswerkzeug ({{bonusBreakdown.profLabel}}):
+        <b>{{reliableInfo.trainingBonus}}</b>.
+        {{#if reliableInfo.hasReliable}}
+          Mit <b>Verlässliches Talent</b> entspricht das
+          <b>{{reliableInfo.allowedMistakes}}</b> erlaubten Fehlversuchen
+          (Übungsbonus / 2).
+        {{else}}
+          Ohne Verlässliches Talent ergeben sich aus dem Übungsbonus
+          keine zusätzlichen Fehlversuche (0).
+        {{/if}}
+      </p>
+    {{/if}}
+
     <p class="lp-expl">
       Drücke nacheinander die angezeigten Pfeiltasten, bevor der Zeitbalken leer ist.
       Geschaffte Schritte werden oben grün markiert.
