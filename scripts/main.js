@@ -718,8 +718,27 @@ class LockpickingGameApp extends Application {
 
     const ratio = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) : 0;
 
-    this._timerFill.style.width = `${ratio * 100}%`;
-    this._timerText.textContent = `${(this.remainingMs / 1000).toFixed(1)}s`;
+    /* ---------------- TIMER COLOR GRADIENT (NEW) ---------------- */
+
+// ratio = 1 → Grün    ratio = 0 → Rot
+// Wir interpolieren von RGB(76,175,80)  (grün)
+//                 nach RGB(244,67,54)  (rot)
+
+const rStart = 76,  gStart = 175, bStart = 80;   // Grün
+const rEnd   = 244, gEnd   = 67,  bEnd   = 54;   // Rot
+
+const r = Math.round(rStart + (rEnd - rStart) * (1 - ratio));
+const g = Math.round(gStart + (gEnd - gStart) * (1 - ratio));
+const b = Math.round(bStart + (bEnd - bStart) * (1 - ratio));
+
+this._timerFill.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+/* Balkenbreite aktualisieren */
+this._timerFill.style.width = `${ratio * 100}%`;
+
+/* Zeit-Text */
+this._timerText.textContent = `${(this.remainingMs / 1000).toFixed(1)}s`;
+
 
     if (this.remainingMs <= 0) {
       if (!this._spectator) {
