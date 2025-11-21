@@ -184,7 +184,15 @@ function getThievesToolsInfo(actor) {
       proficient: false,
       expert: false,
       totalBonus: 0,
-      disadvantage: true
+      disadvantage: true,
+
+      // NEU: Basis-Breakdown auch im "kein Tool" Fall
+      bonusBreakdown: {
+        dexMod,
+        profPart: 0,
+        profLabel: "Keine Übung",
+        totalBonus: 0
+      }
     };
     console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
     return info;
@@ -193,11 +201,19 @@ function getThievesToolsInfo(actor) {
   let totalBonus = dexMod;
   let disadvantage = true;
 
+  // NEU: Breakdown für Proficiency/Expertise
+  let profPart = 0;
+  let profLabel = "Keine Übung";
+
   if (expert) {
-    totalBonus = dexMod + profBonus * 2;
+    profPart = profBonus * 2;
+    profLabel = "Expertise (Thieves' Tools)";
+    totalBonus = dexMod + profPart;
     disadvantage = false;
   } else if (proficient) {
-    totalBonus = dexMod + profBonus;
+    profPart = profBonus;
+    profLabel = "Übung (Thieves' Tools)";
+    totalBonus = dexMod + profPart;
     disadvantage = false;
   } else {
     totalBonus = dexMod;
@@ -214,7 +230,15 @@ function getThievesToolsInfo(actor) {
     proficient,
     expert,
     totalBonus,
-    disadvantage
+    disadvantage,
+
+    // NEU: Bonus-Zusammenfassung
+    bonusBreakdown: {
+      dexMod,
+      profPart,
+      profLabel,
+      totalBonus
+    }
   };
 
   console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
@@ -283,6 +307,24 @@ class LockpickingConfigApp extends FormApplication {
     let allowedMistakes = 0;
     if (hasReliable) allowedMistakes = Math.floor(trainingBonus / 2);
 
+    // NEU: Info-Objekte für Anzeige im Minigame
+    const bonusBreakdown = info.bonusBreakdown ?? {
+      dexMod: info.dexMod,
+      profPart: trainingBonus,
+      profLabel: info.expert
+        ? "Expertise (Thieves' Tools)"
+        : info.proficient
+          ? "Übung (Thieves' Tools)"
+          : "Keine Übung",
+      totalBonus: bonus
+    };
+
+    const reliableInfo = {
+      hasReliable,
+      trainingBonus,
+      allowedMistakes
+    };
+
     // eindeutige Run-ID für diesen Lockpicking-Versuch
     const runId = foundry.utils.randomID();
 
@@ -299,7 +341,11 @@ class LockpickingConfigApp extends FormApplication {
           bonus,
           disadvantage: info.disadvantage,
           allowedMistakes,
-          reliableTalent: hasReliable
+          reliableTalent: hasReliable,
+
+          // NEU: an das Game-Fenster durchreichen
+          bonusBreakdown,
+          reliableInfo
         }
       }
     });
@@ -360,7 +406,11 @@ class LockpickingGameApp extends Application {
       bonus: this.config.bonus,
       disadvantage: this.config.disadvantage,
       allowedMistakes: this.allowedMistakes,
-      reliableTalent: this.config.reliableTalent
+      reliableTalent: this.config.reliableTalent,
+
+      // NEU: Daten fürs Template
+      bonusBreakdown: this.config.bonusBreakdown,
+      reliableInfo: this.config.reliableInfo
     };
   }
 
@@ -376,13 +426,8 @@ class LockpickingGameApp extends Application {
   _setupDifficulty() {
     const { dc, bonus, disadvantage } = this.config;
 
-    // *** GEÄNDERT: höhere Obergrenze für die Schrittzahl ***
-    // Bisher: max. 12 Schritte → jetzt max. 20 Schritte
     let steps = Math.round(dc * 0.5);
-    steps = Math.max(3, Math.min(20, steps)); // <- HIER geändert
-
-    // optional: Kommentar zur Orientierung
-    // DC 10 ≈ 5 Steps, DC 20 ≈ 10 Steps, DC 30 ≈ 15 Steps (gedeckelt bei 20)
+    steps = Math.max(3, Math.min(12, steps));
 
     const baseSeconds = 5 + (steps - 5) / 3;
     const bonusSeconds = Math.max(0, bonus) * 0.5;
@@ -484,6 +529,7 @@ class LockpickingGameApp extends Application {
     this.currentIndex = index + 1;
 
     if (this.currentIndex >= this.sequence.length) {
+      // Fertig – Finish-Event kommt gleich noch, aber wir können schon mal das Icon leeren
       this._keyIconInner.style.backgroundImage = "";
     } else {
       this._updateCurrentKeyIcon();
@@ -537,6 +583,7 @@ class LockpickingGameApp extends Application {
       html.find("[data-action='cancel-game']").click(() => this._finish(false, "Abgebrochen."));
       document.addEventListener("keydown", this._keyHandler);
     } else {
+      // Spectator: keine Interaktion, Buttons deaktivieren
       if (this._startBtn) this._startBtn.disabled = true;
       html.find("[data-action='cancel-game']").click(() => this.close());
     }
@@ -678,6 +725,7 @@ class LockpickingGameApp extends Application {
       if (!this._spectator) {
         return this._finish(false, "Zeit abgelaufen");
       } else {
+        // Spectator wartet auf Finish-Event vom Spieler, aber Timer stoppen
         cancelAnimationFrame(this._raf);
         return;
       }
