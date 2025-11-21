@@ -279,7 +279,7 @@
   background:
     radial-gradient(circle at top left, rgba(255,255,255,0.12), transparent 55%),
     radial-gradient(circle at bottom right, rgba(0,0,0,0.4), transparent 60%),
-    url("modules/lockpicking-minigame/textures/metal-aged.jpg");
+    url("../textures/metal-aged.jpg");
   background-size: cover;
   border-radius: 6px;
   box-shadow:
