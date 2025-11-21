@@ -427,7 +427,7 @@ class LockpickingGameApp extends Application {
     const { dc, bonus, disadvantage } = this.config;
 
     let steps = Math.round(dc * 0.5);
-    steps = Math.max(3, Math.min(12, steps));
+    steps = Math.max(3, Math.min(15, steps));
 
     const baseSeconds = 5 + (steps - 5) / 3;
     const bonusSeconds = Math.max(0, bonus) * 0.5;
