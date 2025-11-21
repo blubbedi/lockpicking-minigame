@@ -376,8 +376,13 @@ class LockpickingGameApp extends Application {
   _setupDifficulty() {
     const { dc, bonus, disadvantage } = this.config;
 
+    // *** GEÄNDERT: höhere Obergrenze für die Schrittzahl ***
+    // Bisher: max. 12 Schritte → jetzt max. 20 Schritte
     let steps = Math.round(dc * 0.5);
-    steps = Math.max(3, Math.min(12, steps));
+    steps = Math.max(3, Math.min(20, steps)); // <- HIER geändert
+
+    // optional: Kommentar zur Orientierung
+    // DC 10 ≈ 5 Steps, DC 20 ≈ 10 Steps, DC 30 ≈ 15 Steps (gedeckelt bei 20)
 
     const baseSeconds = 5 + (steps - 5) / 3;
     const bonusSeconds = Math.max(0, bonus) * 0.5;
@@ -479,7 +484,6 @@ class LockpickingGameApp extends Application {
     this.currentIndex = index + 1;
 
     if (this.currentIndex >= this.sequence.length) {
-      // Fertig – Finish-Event kommt gleich noch, aber wir können schon mal das Icon leeren
       this._keyIconInner.style.backgroundImage = "";
     } else {
       this._updateCurrentKeyIcon();
@@ -533,7 +537,6 @@ class LockpickingGameApp extends Application {
       html.find("[data-action='cancel-game']").click(() => this._finish(false, "Abgebrochen."));
       document.addEventListener("keydown", this._keyHandler);
     } else {
-      // Spectator: keine Interaktion, Buttons deaktivieren
       if (this._startBtn) this._startBtn.disabled = true;
       html.find("[data-action='cancel-game']").click(() => this.close());
     }
@@ -675,7 +678,6 @@ class LockpickingGameApp extends Application {
       if (!this._spectator) {
         return this._finish(false, "Zeit abgelaufen");
       } else {
-        // Spectator wartet auf Finish-Event vom Spieler, aber Timer stoppen
         cancelAnimationFrame(this._raf);
         return;
       }
