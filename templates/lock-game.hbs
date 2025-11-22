@@ -21,7 +21,7 @@
       {{/if}}
     </div>
 
-    {{!-- NEU: Bonus-Zusammensetzung (DEX + Übung/Expertise) --}}
+    {{!-- Bonus-Zusammensetzung (DEX + Übung/Expertise) --}}
     {{#if bonusBreakdown}}
       <p class="lp-expl">
         Bonus-Zusammensetzung:
@@ -33,7 +33,7 @@
       </p>
     {{/if}}
 
-    {{!-- NEU: Erklärung Übungsbonus / Reliable Talent / Fehlversuche --}}
+    {{!-- Erklärung Übungsbonus / Reliable Talent / Fehlversuche --}}
     {{#if reliableInfo}}
       <p class="lp-expl">
         Übungsbonus für Diebeswerkzeug ({{bonusBreakdown.profLabel}}):
@@ -71,9 +71,12 @@
     <div class="lp-sequence-steps"></div>
   </div>
 
-  <!-- Aktuelle Taste (Step-Feld) -->
+  <!-- Aktuelle Taste (Schlüsselloch + Dietrich + Pfeil) -->
   <div class="lp-current-key-box">
     <div class="lp-current-key-icon">
+      <!-- Dietrich, mittlere Ebene -->
+      <div class="lp-current-key-pick"></div>
+      <!-- Pfeil, oberste Ebene -->
       <div class="lp-current-key-icon-inner" data-key=""></div>
     </div>
     <div class="lp-current-key-label">Aktuelle Taste</div>
