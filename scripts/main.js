@@ -297,6 +297,11 @@ class LockpickingConfigApp extends FormApplication {
     const user = game.users.get(userId);
 
     const info = getThievesToolsInfo(actor);
+    // NEU: kein Werkzeug → Abbruch
+if (!info.hasToolInventory && !info.hasToolsEntry) {
+  ui.notifications.error(`${actor.name} besitzt kein Diebeswerkzeug – Schlossknacken nicht möglich.`);
+  return;
+}
     const bonus = info.totalBonus;
 
     const hasReliable = actorHasReliableTalent(actor);
