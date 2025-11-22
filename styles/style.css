@@ -470,8 +470,8 @@
 }
 
 .window-app#lockpicking-game .lp-timer-fill {
-  /* Grund-Gradient, wird von JS-Farbinterpolation übermalt */
-  background: linear-gradient(to right, #c0e57a, #f5d76e);
+  /* Startfarbe, wird von JS (backgroundColor) überschrieben */
+  background-color: #4caf50;
 }
 
 .window-app#lockpicking-game .lp-mistakes-info {
