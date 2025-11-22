@@ -213,7 +213,7 @@
   top: 50%;
   width: 52px;              /* ggf. an deine Pick-Bilder anpassen */
   height: 52px;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -55%);
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
