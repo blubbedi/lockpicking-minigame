@@ -5,12 +5,11 @@
 
 const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
 
-/* Arrow Icon paths (JPG) */
 const ARROW_ICON_PATHS = {
-  ArrowUp: "modules/lockpicking-minigame/icons/arrow-up.jpg",
-  ArrowDown: "modules/lockpicking-minigame/icons/arrow-down.jpg",
-  ArrowLeft: "modules/lockpicking-minigame/icons/arrow-left.jpg",
-  ArrowRight: "modules/lockpicking-minigame/icons/arrow-right.jpg"
+  ArrowUp: "modules/lockpicking-minigame/icons/arrow-up.png",
+  ArrowDown: "modules/lockpicking-minigame/icons/arrow-down.png",
+  ArrowLeft: "modules/lockpicking-minigame/icons/arrow-left.png",
+  ArrowRight: "modules/lockpicking-minigame/icons/arrow-right.png"
 };
 
 /* Kleines Registry für laufende Spiele (Spectator-Zuordnung) */
