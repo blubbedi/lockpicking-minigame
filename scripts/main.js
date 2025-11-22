@@ -173,7 +173,7 @@ function getThievesToolsInfo(actor) {
   const hasAnyTool = hasToolInventory || hasToolsEntry;
 
   if (!hasAnyTool) {
-    const info = {
+    const infoNoTool = {
       dexMod,
       profBonus,
       hasToolInventory,
@@ -184,8 +184,6 @@ function getThievesToolsInfo(actor) {
       expert: false,
       totalBonus: 0,
       disadvantage: true,
-
-      // NEU: Basis-Breakdown auch im "kein Tool" Fall
       bonusBreakdown: {
         dexMod,
         profPart: 0,
@@ -193,14 +191,14 @@ function getThievesToolsInfo(actor) {
         totalBonus: 0
       }
     };
-    console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, info);
-    return info;
+    console.log(`${LOCKPICKING_NAMESPACE} | ThievesToolsInfo`, infoNoTool);
+    return infoNoTool;
   }
 
   let totalBonus = dexMod;
   let disadvantage = true;
 
-  // NEU: Breakdown für Proficiency/Expertise
+  // Breakdown für Proficiency/Expertise
   let profPart = 0;
   let profLabel = "Keine Übung";
 
@@ -230,8 +228,6 @@ function getThievesToolsInfo(actor) {
     expert,
     totalBonus,
     disadvantage,
-
-    // NEU: Bonus-Zusammenfassung
     bonusBreakdown: {
       dexMod,
       profPart,
@@ -296,11 +292,13 @@ class LockpickingConfigApp extends FormApplication {
     const user = game.users.get(userId);
 
     const info = getThievesToolsInfo(actor);
-    // NEU: kein Werkzeug → Abbruch
-if (!info.hasToolInventory && !info.hasToolsEntry) {
-  ui.notifications.error(`${actor.name} besitzt kein Diebeswerkzeug – Schlossknacken nicht möglich.`);
-  return;
-}
+
+    // kein Werkzeug → Abbruch
+    if (!info.hasToolInventory && !info.hasToolsEntry) {
+      ui.notifications.error(`${actor.name} besitzt kein Diebeswerkzeug – Schlossknacken nicht möglich.`);
+      return;
+    }
+
     const bonus = info.totalBonus;
 
     const hasReliable = actorHasReliableTalent(actor);
@@ -311,7 +309,7 @@ if (!info.hasToolInventory && !info.hasToolsEntry) {
     let allowedMistakes = 0;
     if (hasReliable) allowedMistakes = Math.floor(trainingBonus / 2);
 
-    // NEU: Info-Objekte für Anzeige im Minigame
+    // Info-Objekte für Anzeige im Minigame
     const bonusBreakdown = info.bonusBreakdown ?? {
       dexMod: info.dexMod,
       profPart: trainingBonus,
@@ -347,7 +345,7 @@ if (!info.hasToolInventory && !info.hasToolsEntry) {
           allowedMistakes,
           reliableTalent: hasReliable,
 
-          // NEU: an das Game-Fenster durchreichen
+          // an das Game-Fenster durchreichen
           bonusBreakdown,
           reliableInfo
         }
@@ -412,7 +410,7 @@ class LockpickingGameApp extends Application {
       allowedMistakes: this.allowedMistakes,
       reliableTalent: this.config.reliableTalent,
 
-      // NEU: Daten fürs Template
+      // Daten fürs Template
       bonusBreakdown: this.config.bonusBreakdown,
       reliableInfo: this.config.reliableInfo
     };
@@ -720,29 +718,41 @@ class LockpickingGameApp extends Application {
       this.remainingMs = Math.max(0, this.remainingMs - dt);
     }
 
-    const ratio = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) : 0;
+    let ratio = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) : 0;
+    // Clamp, damit wir sauber zwischen 0 und 1 bleiben
+    ratio = Math.max(0, Math.min(1, ratio));
 
-    /* ---------------- TIMER COLOR GRADIENT (NEW) ---------------- */
+    /* -------- TIMER-FARBE: GRÜN → GELB → ROT -------- */
 
-// ratio = 1 → Grün    ratio = 0 → Rot
-// Wir interpolieren von RGB(76,175,80)  (grün)
-//                 nach RGB(244,67,54)  (rot)
+    const green  = { r:  76, g: 175, b:  80 }; // Start
+    const yellow = { r: 255, g: 235, b:  59 }; // Mitte
+    const red    = { r: 244, g:  67, b:  54 }; // Ende
 
-const rStart = 76,  gStart = 175, bStart = 80;   // Grün
-const rEnd   = 244, gEnd   = 67,  bEnd   = 54;   // Rot
+    let r, g, b;
 
-const r = Math.round(rStart + (rEnd - rStart) * (1 - ratio));
-const g = Math.round(gStart + (gEnd - gStart) * (1 - ratio));
-const b = Math.round(bStart + (bEnd - bStart) * (1 - ratio));
+    if (ratio >= 0.5) {
+      // 1.0 → 0.5 (Grün → Gelb)
+      const t = (ratio - 0.5) / 0.5; // 1 bei Start, 0 bei Hälfte
+      r = Math.round(yellow.r + (green.r - yellow.r) * t);
+      g = Math.round(yellow.g + (green.g - yellow.g) * t);
+      b = Math.round(yellow.b + (green.b - yellow.b) * t);
+    } else {
+      // 0.5 → 0.0 (Gelb → Rot)
+      const t = ratio / 0.5; // 1 bei Hälfte, 0 bei Ende
+      r = Math.round(red.r + (yellow.r - red.r) * t);
+      g = Math.round(red.g + (yellow.g - red.g) * t);
+      b = Math.round(red.b + (yellow.b - red.b) * t);
+    }
 
-this._timerFill.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+    // Hintergrund-Farbe des Balkens setzen (inline-Style, überschreibt CSS-Gradienten)
+    if (this._timerFill) {
+      this._timerFill.style.background = `rgb(${r}, ${g}, ${b})`;
+      this._timerFill.style.width = `${ratio * 100}%`;
+    }
 
-/* Balkenbreite aktualisieren */
-this._timerFill.style.width = `${ratio * 100}%`;
-
-/* Zeit-Text */
-this._timerText.textContent = `${(this.remainingMs / 1000).toFixed(1)}s`;
-
+    if (this._timerText) {
+      this._timerText.textContent = `${(this.remainingMs / 1000).toFixed(1)}s`;
+    }
 
     if (this.remainingMs <= 0) {
       if (!this._spectator) {
