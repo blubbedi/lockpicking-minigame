@@ -186,7 +186,7 @@
 
   /* HIER KEYHOLE-IMAGE ANPASSEN, FALLS ANDERS BENANNT */
   background:
-    url("../icons/keyhole-256.png") center center no-repeat;
+    url("../textures/keyhole.png") center center no-repeat;
   background-size: contain;
 
   display: flex;
