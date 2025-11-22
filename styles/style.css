@@ -106,7 +106,8 @@
 .lp-timer-fill {
   width: 100%;
   height: 100%;
-  background: linear-gradient(to right, #c0e57a, #f5d76e);
+  /* nur eine neutrale Startfarbe, JS färbt dann um */
+  background: #4caf50;
   transition: width 0.04s linear;
 }
 
