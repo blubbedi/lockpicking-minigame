@@ -211,9 +211,9 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 52px;              /* ggf. an deine Pick-Bilder anpassen */
-  height: 52px;
-  transform: translate(-50%, -55%);
+  width: 60px;              /* ggf. an deine Pick-Bilder anpassen */
+  height: 60px;
+  transform: translate(-50%, -65%);
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
