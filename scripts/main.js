@@ -1,11 +1,12 @@
 /**
  * Lockpicking Minigame - main.js
  * Features:
- * - Minigame Logic (Pfeiltasten, Zeitlimit)
- * - Tidy5e & Default Sheet Support (Button Injection)
- * - Socket Sync für GM/Spectator Mode
+ * - Minigame Logic & UI
+ * - Tidy5e & Default Sheet Support
+ * - Socket Sync
  * - Reliable Talent / Expertise Support
- * - SOUND SUPPORT (Fix für Foundry v12+)
+ * - SOUND SUPPORT (v12 fix)
+ * - LOKALISIERUNG (i18n Support)
  */
 
 const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
@@ -24,7 +25,6 @@ const PICK_ICON_PATHS = {
   ArrowRight: "modules/lockpicking-minigame/icons/lockpick-right.png"
 };
 
-/* --- Sound Pfade --- */
 const SOUND_PATHS = {
   hit: "modules/lockpicking-minigame/sounds/click.mp3",
   miss: "modules/lockpicking-minigame/sounds/error.mp3",
@@ -36,22 +36,9 @@ const SOUND_PATHS = {
 
 class LockpickingRegistry {
   static instancesByRunId = {};
-
-  static register(runId, app) {
-    if (!runId) return;
-    this.instancesByRunId[runId] = app;
-  }
-
-  static unregister(runId, app) {
-    if (!runId) return;
-    if (this.instancesByRunId[runId] === app) {
-      delete this.instancesByRunId[runId];
-    }
-  }
-
-  static get(runId) {
-    return this.instancesByRunId[runId];
-  }
+  static register(runId, app) { if (runId) this.instancesByRunId[runId] = app; }
+  static unregister(runId, app) { if (runId && this.instancesByRunId[runId] === app) delete this.instancesByRunId[runId]; }
+  static get(runId) { return this.instancesByRunId[runId]; }
 }
 
 /* ---------------- Hooks ---------------- */
@@ -59,31 +46,23 @@ class LockpickingRegistry {
 Hooks.once("ready", () => {
   console.log(`${LOCKPICKING_NAMESPACE} | Ready`);
 
-  // API für Makros
   game.lockpickingMinigame = {
     openConfig() {
       if (!game.user.isGM)
-        return ui.notifications.warn("Nur der Spielleiter kann dieses Fenster öffnen.");
+        return ui.notifications.warn(game.i18n.localize("LOCKPICKING.OnlyGM"));
       new LockpickingConfigApp().render(true);
     }
   };
 
-  // Chat Message Listener
   Hooks.on("createChatMessage", (msg) => {
     const data = msg.flags?.[LOCKPICKING_NAMESPACE];
-    if (!data) return;
-    if (data.action !== "openGame") return;
-
+    if (!data || data.action !== "openGame") return;
     const actor = game.actors.get(data.actorId);
     if (!actor) return;
-
     const isTarget = game.user.id === data.userId;
-    const isSpectator = !isTarget;
-
-    new LockpickingGameApp(actor, data, { spectator: isSpectator }).render(true);
+    new LockpickingGameApp(actor, data, { spectator: !isTarget }).render(true);
   });
 
-  // Socket Listener
   game.socket.on(`module.${LOCKPICKING_NAMESPACE}`, (payload) => {
     if (!payload) return;
 
@@ -91,7 +70,13 @@ Hooks.once("ready", () => {
       if (!game.user.isGM) return;
       const user = game.users.get(payload.userId);
       const actor = game.actors.get(payload.actorId);
-      ui.notifications.info(`${user?.name} möchte ein Schloss knacken (${actor?.name}).`);
+      
+      // i18n
+      ui.notifications.info(game.i18n.format("LOCKPICKING.RequestInfo", {
+        user: user?.name,
+        actor: actor?.name
+      }));
+      
       new LockpickingConfigApp(payload.actorId).render(true);
       return;
     }
@@ -108,13 +93,15 @@ Hooks.on("renderActorSheet", (app, html, data) => {
   if (!app.actor || !app.actor.isOwner) return;
 
   const createBtn = () => {
-    const btn = $(`<a class="lockpicking-trigger" title="Schloss knacken anfragen">
+    // Button Title lokalisiert
+    const title = game.i18n.localize("LOCKPICKING.ButtonTitle");
+    const btn = $(`<a class="lockpicking-trigger" title="${title}">
       <i class="fas fa-lock"></i>
     </a>`);
     btn.click((ev) => {
       ev.preventDefault();
       ev.stopPropagation();
-      ui.notifications.info("Anfrage an Spielleiter gesendet...");
+      ui.notifications.info(game.i18n.localize("LOCKPICKING.RequestSent"));
       game.socket.emit(`module.${LOCKPICKING_NAMESPACE}`, {
         action: "requestConfig",
         actorId: app.actor.id,
@@ -124,7 +111,6 @@ Hooks.on("renderActorSheet", (app, html, data) => {
     return btn;
   };
 
-  // 1. Inventar
   const items = html.find("[data-item-id]");
   items.each((i, el) => {
     const li = $(el);
@@ -140,14 +126,11 @@ Hooks.on("renderActorSheet", (app, html, data) => {
     }
   });
 
-  // 2. Tidy5e Dashboard
   const toolsList = html.find("[data-key='thief'], .tool-row, .proficiency-row");
   toolsList.each((i, el) => {
     const row = $(el);
     const text = row.text().toLowerCase();
-    const matchesName = text.includes("thieves") || text.includes("diebes");
-    const matchesKey = row.attr("data-key") === "thief";
-    if (matchesKey || matchesName) {
+    if (row.attr("data-key") === "thief" || text.includes("thieves") || text.includes("diebes")) {
       if (row.find(".lockpicking-trigger").length > 0) return;
       const btn = createBtn();
       const rollBtn = row.find("[data-action='roll']");
@@ -201,13 +184,18 @@ function getThievesToolsInfo(actor) {
   }
   if (toolsProfLevel >= 2) expert = true; else if (toolsProfLevel >= 1) proficient = true;
 
+  // i18n Strings
+  const txtNoProf = game.i18n.localize("LOCKPICKING.NoProficiency");
+  const txtProf = game.i18n.localize("LOCKPICKING.Proficiency");
+  const txtExpert = game.i18n.localize("LOCKPICKING.Expertise");
+
   if (!hasToolInventory && !hasToolsEntry) {
-    return { dexMod, profBonus, hasToolInventory, hasToolsEntry, proficient: false, expert: false, totalBonus: 0, disadvantage: true, bonusBreakdown: { dexMod, profPart: 0, profLabel: "Keine Übung", totalBonus: 0 } };
+    return { dexMod, profBonus, hasToolInventory, hasToolsEntry, proficient: false, expert: false, totalBonus: 0, disadvantage: true, bonusBreakdown: { dexMod, profPart: 0, profLabel: txtNoProf, totalBonus: 0 } };
   }
 
-  let totalBonus = dexMod, disadvantage = true, profPart = 0, profLabel = "Keine Übung";
-  if (expert) { profPart = profBonus * 2; profLabel = "Expertise"; totalBonus += profPart; disadvantage = false; }
-  else if (proficient) { profPart = profBonus; profLabel = "Übung"; totalBonus += profPart; disadvantage = false; }
+  let totalBonus = dexMod, disadvantage = true, profPart = 0, profLabel = txtNoProf;
+  if (expert) { profPart = profBonus * 2; profLabel = txtExpert; totalBonus += profPart; disadvantage = false; }
+  else if (proficient) { profPart = profBonus; profLabel = txtProf; totalBonus += profPart; disadvantage = false; }
 
   return { dexMod, profBonus, hasToolInventory, hasToolsEntry, proficient, expert, totalBonus, disadvantage, bonusBreakdown: { dexMod, profPart, profLabel, totalBonus } };
 }
@@ -218,9 +206,13 @@ class LockpickingConfigApp extends FormApplication {
   constructor(preSelectedActorId = null, options = {}) { super(null, options); this.preSelectedActorId = preSelectedActorId; }
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "lockpicking-config", template: "modules/lockpicking-minigame/templates/lock-config.hbs", width: 420, title: "Schlossknacken Konfiguration"
+      id: "lockpicking-config", template: "modules/lockpicking-minigame/templates/lock-config.hbs", width: 420
     });
   }
+  
+  // Titel dynamisch
+  get title() { return game.i18n.localize("LOCKPICKING.ConfigTitle"); }
+
   getData() {
     const groups = [];
     for (const user of game.users) {
@@ -242,19 +234,24 @@ class LockpickingConfigApp extends FormApplication {
   }
   async _updateObject(ev, data) {
     const selection = data.selection, dc = Number(data.dc) || 15;
-    if (!selection) return ui.notifications.error("Kein Charakter ausgewählt.");
+    if (!selection) return ui.notifications.error(game.i18n.localize("LOCKPICKING.NoCharSelected"));
     const [actorId, userId] = selection.split("|");
     const actor = game.actors.get(actorId);
     const info = getThievesToolsInfo(actor);
-    if (!info.hasToolInventory && !info.hasToolsEntry) return ui.notifications.error(`${actor.name} besitzt kein Diebeswerkzeug.`);
+    
+    if (!info.hasToolInventory && !info.hasToolsEntry) 
+        return ui.notifications.error(game.i18n.format("LOCKPICKING.NoTools", { actor: actor.name }));
     
     const bonus = info.totalBonus, hasReliable = actorHasReliableTalent(actor);
     const trainingBonus = info.expert ? info.profBonus * 2 : info.proficient ? info.profBonus : 0;
     const allowedMistakes = hasReliable ? Math.floor(trainingBonus / 2) : 0;
     const runId = foundry.utils.randomID();
+    
+    // Chat Msg Title
+    const chatContent = game.i18n.format("LOCKPICKING.ChatMessage.Title", { actor: actor.name }) + "…";
 
     await ChatMessage.create({
-      content: `Lockpicking startet für <b>${actor.name}</b>…`,
+      content: chatContent,
       speaker: { alias: "Lockpicking" },
       flags: { [LOCKPICKING_NAMESPACE]: { action: "openGame", runId, actorId, userId, dc, bonus, disadvantage: info.disadvantage, allowedMistakes, reliableTalent: hasReliable, bonusBreakdown: info.bonusBreakdown, reliableInfo: { hasReliable, trainingBonus, allowedMistakes } } }
     });
@@ -275,20 +272,24 @@ class LockpickingGameApp extends Application {
 
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "lockpicking-game", template: "modules/lockpicking-minigame/templates/lock-game.hbs", width: 420, title: "Schlossknacken"
+      id: "lockpicking-game", template: "modules/lockpicking-minigame/templates/lock-game.hbs", width: 420
     });
   }
+  
+  // Titel dynamisch
+  get title() { return game.i18n.localize("LOCKPICKING.Title"); }
+
   getData() {
-    return { actorName: this.actor.name, dc: this.config.dc, bonus: this.config.bonus, disadvantage: this.config.disadvantage, allowedMistakes: this.allowedMistakes, reliableTalent: this.config.reliableTalent, bonusBreakdown: this.config.bonusBreakdown, reliableInfo: this.config.reliableInfo };
+    return { 
+        actorName: this.actor.name, dc: this.config.dc, bonus: this.config.bonus, 
+        disadvantage: this.config.disadvantage, allowedMistakes: this.allowedMistakes, 
+        reliableTalent: this.config.reliableTalent, bonusBreakdown: this.config.bonusBreakdown, reliableInfo: this.config.reliableInfo 
+    };
   }
 
-  /* --- FIX: Sound Helper --- */
   _playSound(type) {
     const src = SOUND_PATHS[type];
-    if (src) {
-      // FIX FÜR FOUNDRY V12: Verwende foundry.audio.AudioHelper
-      foundry.audio.AudioHelper.play({ src, volume: 0.5, autoplay: true, loop: false }, false);
-    }
+    if (src) foundry.audio.AudioHelper.play({ src, volume: 0.5, autoplay: true, loop: false }, false);
   }
 
   _generateSequence(len) { return Array.from({ length: len }, () => ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"][Math.floor(Math.random() * 4)]); }
@@ -322,7 +323,9 @@ class LockpickingGameApp extends Application {
     this.mistakesMade = p.mistakesMade; this.currentIndex = 0;
     this._renderSequence(); this._updateMistakesInfo();
     if (this.sequence.length) { this._updateCurrentKeyIcon(); this._highlightCurrentStep(); }
-    this._status.textContent = "Lockpicking gestartet (Spectator).";
+    
+    this._status.textContent = game.i18n.localize("LOCKPICKING.StartedSpectator");
+    
     this._lastTs = null; this._running = true;
     if (this._startBtn) this._startBtn.disabled = true;
     this._raf = requestAnimationFrame(this._tick.bind(this));
@@ -350,7 +353,12 @@ class LockpickingGameApp extends Application {
     this._playSound("miss");
     this.mistakesMade = p.mistakesMade;
     this._updateMistakesInfo();
-    this._status.textContent = `Falsche Taste (${this.mistakesMade}/${this.allowedMistakes})`;
+    
+    this._status.textContent = game.i18n.format("LOCKPICKING.MistakesCount", {
+        current: this.mistakesMade,
+        max: this.allowedMistakes
+    });
+    
     this._flashErrorKeyIcon();
   }
 
@@ -358,7 +366,14 @@ class LockpickingGameApp extends Application {
     if (p.success) this._playSound("win");
     else this._playSound("lose");
 
-    this._status.textContent = p.success ? "Erfolg! (Spectator)" : `Fehlschlag: ${p.reason} (Spectator)`;
+    if (p.success) {
+        this._status.textContent = game.i18n.localize("LOCKPICKING.SpectatorSuccess");
+    } else {
+        const reason = p.reason === "Zeit abgelaufen" ? game.i18n.localize("LOCKPICKING.TimeUp") 
+                       : p.reason === "Falsche Taste" ? game.i18n.localize("LOCKPICKING.WrongKey") : p.reason;
+        this._status.textContent = game.i18n.format("LOCKPICKING.SpectatorFailure", { reason });
+    }
+
     cancelAnimationFrame(this._raf); this._running = false;
     if (this._startBtn) this._startBtn.disabled = false;
     setTimeout(() => this.close(), 1500);
@@ -420,7 +435,10 @@ class LockpickingGameApp extends Application {
     this._setupDifficulty(); this._renderSequence();
     this.currentIndex = 0; this.mistakesMade = 0; this._updateMistakesInfo();
     if (this.sequence.length) { this._updateCurrentKeyIcon(); this._highlightCurrentStep(); }
-    this._status.textContent = "Los geht’s!"; this._lastTs = null;
+    
+    this._status.textContent = game.i18n.localize("LOCKPICKING.Go");
+    
+    this._lastTs = null;
     this._emitSocket("start", { sequence: this.sequence, totalTimeMs: this.totalTimeMs, mistakesMade: 0 });
     this._raf = requestAnimationFrame(this._tick.bind(this));
   }
@@ -444,7 +462,15 @@ class LockpickingGameApp extends Application {
   }
 
   _updateMistakesInfo() {
-    this._mistakesInfo.textContent = this.allowedMistakes === 0 ? "" : `Fehler erlaubt: ${this.allowedMistakes - this.mistakesMade}/${this.allowedMistakes}`;
+    if (this.allowedMistakes === 0) {
+        this._mistakesInfo.textContent = "";
+    } else {
+        const remaining = this.allowedMistakes - this.mistakesMade;
+        this._mistakesInfo.textContent = game.i18n.format("LOCKPICKING.MistakesAllowed", {
+            remaining: remaining,
+            max: this.allowedMistakes
+        });
+    }
   }
 
   _tick(ts) {
@@ -459,7 +485,7 @@ class LockpickingGameApp extends Application {
     if (this.remainingMs <= 0) {
       if (!this._spectator) {
         this._playSound("lose");
-        return this._finish(false, "Zeit abgelaufen");
+        return this._finish(false, game.i18n.localize("LOCKPICKING.TimeUp"));
       }
       cancelAnimationFrame(this._raf); return;
     }
@@ -476,20 +502,24 @@ class LockpickingGameApp extends Application {
 
     if (ev.key !== exp) {
       this._playSound("miss");
-      
       this._flashErrorKeyIcon();
+      
       if (this.mistakesMade < this.allowedMistakes) {
-        this.mistakesMade++; this._updateMistakesInfo();
-        this._status.textContent = `Falsche Taste (${this.mistakesMade}/${this.allowedMistakes})`;
+        this.mistakesMade++; 
+        this._updateMistakesInfo();
+        this._status.textContent = game.i18n.format("LOCKPICKING.MistakesCount", {
+            current: this.mistakesMade,
+            max: this.allowedMistakes
+        });
+        
         this._emitSocket("mistake", { mistakesMade: this.mistakesMade });
         return;
       }
       this._emitSocket("mistake", { mistakesMade: this.mistakesMade + 1 });
-      return this._finish(false, "Falsche Taste");
+      return this._finish(false, game.i18n.localize("LOCKPICKING.WrongKey"));
     }
 
     this._playSound("hit");
-
     this._updatePickForKey(ev.key);
     this._flashCurrentKeyIcon();
     const el = this._seq.querySelector(`[data-index="${this.currentIndex}"]`);
@@ -508,14 +538,21 @@ class LockpickingGameApp extends Application {
     if (success) this._playSound("win");
     else this._playSound("lose");
 
-    this._status.textContent = success ? "Erfolg!" : `Fehlschlag: ${reason}`;
+    this._status.textContent = success ? game.i18n.localize("LOCKPICKING.Success") : `${game.i18n.localize("LOCKPICKING.Failure")}: ${reason}`;
     cancelAnimationFrame(this._raf); this._running = false;
     if (this._startBtn) this._startBtn.disabled = false;
     this._emitSocket("finish", { success, reason, mistakesMade: this.mistakesMade });
     this._updatePickForKey(null);
+    
+    const resultTxt = success ? game.i18n.localize("LOCKPICKING.Result.Success") : game.i18n.localize("LOCKPICKING.Result.Failure");
+    
+    let content = game.i18n.format("LOCKPICKING.ChatMessage.Title", { actor: this.actor.name }) + "<br>";
+    content += game.i18n.format("LOCKPICKING.ChatMessage.Result", { result: resultTxt }) + "<br>";
+    content += game.i18n.format("LOCKPICKING.ChatMessage.Mistakes", { mistakes: this.mistakesMade, allowed: this.allowedMistakes });
+
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-      content: `Lockpicking – <b>${this.actor.name}</b><br>Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b><br>Fehler: ${this.mistakesMade} / ${this.allowedMistakes}`
+      content: content
     });
     setTimeout(() => this.close(), 1500);
   }
