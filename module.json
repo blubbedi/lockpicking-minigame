@@ -1,12 +1,11 @@
 {
   "id": "lockpicking-minigame",
   "title": "Lockpicking Minigame",
-  "description": "Ein interaktives Schlossknack-Minispiel für Dungeons & Dragons 5th Edition mit Custom-UI und Spectre-Modus.",
-  "version": "final1.0", 
+  "description": "Ein kleines Schlossknack-Minispiel für Foundry VTT.",
+  "version": "final1.0",
   "compatibility": {
     "minimum": "11",
-    "verified": "12",
-    "maximum": "13"
+    "verified": "11"
   },
   "authors": [
     {
@@ -33,12 +32,8 @@
     }
   ],
   "packs": [],
-  "system": [
-    "dnd5e"
-  ],
-  "url": "https://github.com/blubbedi/lockpicking-minigame",
   "manifest": "https://raw.githubusercontent.com/blubbedi/lockpicking-minigame/main/module.json",
-  "download": "https://github.com/blubbedi/lockpicking-minigame/releases/download/final1.0/lockpicking-minigame-final1.0.zip", 
+  "download": "https://github.com/blubbedi/lockpicking-minigame/releases/download/final1.0/lockpicking-minigame-final1.0.zip",
   "license": "LICENSE",
   "socket": true
 }
