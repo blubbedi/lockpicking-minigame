@@ -13,7 +13,6 @@
       "url": "https://github.com/blubbedi"
     }
   ],
-
   "esmodules": [
     "scripts/main.js"
   ],
@@ -24,16 +23,17 @@
     {
       "lang": "de",
       "name": "Deutsch",
-      "path": "lang/de.json"
+      "path": "languages/de.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "languages/en.json"
     }
   ],
-
   "packs": [],
-
   "manifest": "https://raw.githubusercontent.com/blubbedi/lockpicking-minigame/main/module.json",
   "download": "https://github.com/blubbedi/lockpicking-minigame/archive/refs/heads/main.zip",
-
   "license": "LICENSE",
-
   "socket": true
 }
