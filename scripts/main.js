@@ -1,5 +1,5 @@
 /** * Lockpicking Minigame - main.js
- * Mit Request-Feature aus dem Charakterbogen
+ * Status: Final mit Tidy5e Support & Player Request Workflow
  */
 
 const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
@@ -45,6 +45,7 @@ class LockpickingRegistry {
 Hooks.once("ready", () => {
   console.log(`${LOCKPICKING_NAMESPACE} | Ready`);
 
+  // API für Makros (GM only)
   game.lockpickingMinigame = {
     openConfig() {
       if (!game.user.isGM)
@@ -53,6 +54,7 @@ Hooks.once("ready", () => {
     }
   };
 
+  // Chat-Button Listener
   Hooks.on("createChatMessage", (msg) => {
     const data = msg.flags?.[LOCKPICKING_NAMESPACE];
     if (!data) return;
@@ -67,24 +69,26 @@ Hooks.once("ready", () => {
     new LockpickingGameApp(actor, data, { spectator: isSpectator }).render(true);
   });
 
+  // Socket Listener
   game.socket.on(`module.${LOCKPICKING_NAMESPACE}`, (payload) => {
     if (!payload) return;
 
-    /* --- NEU: Request vom Spieler behandeln --- */
+    // --- CASE 1: Spieler fordert Lockpicking an ---
     if (payload.action === "requestConfig") {
-      if (!game.user.isGM) return; // Nur GM reagiert darauf
+      if (!game.user.isGM) return; // Nur GM reagiert
 
-      // Optional: Info an GM
       const user = game.users.get(payload.userId);
       const actor = game.actors.get(payload.actorId);
+      
+      // Info an GM
       ui.notifications.info(`${user?.name} möchte ein Schloss knacken (${actor?.name}).`);
 
       // Config öffnen und Actor vorauswählen
       new LockpickingConfigApp(payload.actorId).render(true);
       return;
     }
-    /* ------------------------------------------ */
 
+    // --- CASE 2: Minigame Events (Sync) ---
     if (!payload.runId) return;
     const app = LockpickingRegistry.get(payload.runId);
     if (!app) return;
@@ -92,26 +96,33 @@ Hooks.once("ready", () => {
   });
 });
 
-/* --- NEU: Hook zum Injizieren des Buttons in den Charakterbogen --- */
+/* * HOOK: Button in Charakterbogen injizieren 
+ * Kompatibel mit Standard dnd5e Sheet UND Tidy5e
+ */
 Hooks.on("renderActorSheet", (app, html, data) => {
-  // Sicherheitscheck: Haben wir einen Actor und ist der User der Owner?
+  // Sicherheitscheck: Nur wenn User der Owner ist
   if (!app.actor || !app.actor.isOwner) return;
 
-  // Suche nach Items im Inventar. 
-  // Hinweis: ".inventory-list .item" ist Standard dnd5e. Bei Tidy5e o.ä. kann das abweichen.
-  const items = html.find(".inventory-list .item");
+  // Wir suchen nach ALLEN Elementen mit einer Item-ID.
+  // Tidy5e nutzt data-item-id auch in der Favoriten-Box und im Tools-Panel.
+  const items = html.find("[data-item-id]");
 
   items.each((i, el) => {
     const li = $(el);
-    const itemId = li.attr("data-item-id"); // ID aus dem HTML-Attribut holen
+    const itemId = li.attr("data-item-id");
     const item = app.actor.items.get(itemId);
 
     if (!item) return;
 
+    // Namensprüfung (Englisch & Deutsch)
     const name = item.name.toLowerCase();
-    // Prüfen auf Diebeswerkzeug (Deu/Eng)
-    if (item.type === "tool" && (name.includes("thieves") || name.includes("diebes"))) {
+    const isThievesTool = item.type === "tool" && (name.includes("thieves") || name.includes("diebes"));
+
+    if (isThievesTool) {
       
+      // Verhindern, dass wir den Button doppelt einfügen (falls Hook mehrfach feuert)
+      if (li.find(".lockpicking-trigger").length > 0) return;
+
       // Button erstellen
       const btn = $(`<a class="lockpicking-trigger" title="Schloss knacken anfragen">
         <i class="fas fa-lock"></i>
@@ -122,10 +133,10 @@ Hooks.on("renderActorSheet", (app, html, data) => {
         ev.preventDefault();
         ev.stopPropagation();
 
-        // Feedback für den Spieler
+        // Feedback für Spieler
         ui.notifications.info("Anfrage an Spielleiter gesendet...");
 
-        // Socket Event senden
+        // Socket senden
         game.socket.emit(`module.${LOCKPICKING_NAMESPACE}`, {
           action: "requestConfig",
           actorId: app.actor.id,
@@ -133,21 +144,23 @@ Hooks.on("renderActorSheet", (app, html, data) => {
         });
       });
 
-      // Button einfügen: Wir suchen die .item-controls (Edit/Delete Buttons)
+      // --- EINFÜGEN ---
+      // Wir suchen die .item-controls (Edit/Delete Buttons).
+      // Tidy5e hat diese auch im Tools-Panel.
       const controls = li.find(".item-controls");
+      
       if (controls.length) {
+        // Ganz links bei den Controls einfügen
         controls.prepend(btn);
       } else {
-        // Fallback, falls Controls nicht gefunden werden (selten)
+        // Fallback: Falls keine Controls sichtbar sind (selten), hinter den Namen hängen
         li.find(".item-name").append(btn);
       }
     }
   });
 });
-/* ---------------------------------------------------------------- */
 
-
-/* ---------------- Reliable Talent ---------------- */
+/* ---------------- Helper Functions ---------------- */
 
 function actorHasReliableTalent(actor) {
   return actor.items.some((it) => {
@@ -156,8 +169,6 @@ function actorHasReliableTalent(actor) {
     return n.includes("reliable talent") || n.includes("verlässlich");
   });
 }
-
-/* ---------------- Thieves Tools Info ---------------- */
 
 function getThievesToolsInfo(actor) {
   const getProp = foundry.utils.getProperty;
@@ -173,6 +184,7 @@ function getThievesToolsInfo(actor) {
   let itemProfLevel = 0;
   let toolsProfLevel = 0;
 
+  // 1. Inventar prüfen
   const invTool = actor.items.find((it) => {
     const name = (it.name ?? "").toLowerCase();
     return it.type === "tool" && (name.includes("thieves") || name.includes("diebes"));
@@ -193,23 +205,19 @@ function getThievesToolsInfo(actor) {
     else if (itemProfLevel >= 1) proficient = true;
   }
 
+  // 2. System Tools-Eintrag prüfen (Proficiencies Tab)
   const toolsData = getProp(actor, "system.tools") ?? {};
   for (const [key, data] of Object.entries(toolsData)) {
     const keyName = String(key ?? "").toLowerCase();
     const label = String(data.label ?? "").toLowerCase();
 
     const looksLikeThievesTool =
-      keyName.includes("thief") ||
-      keyName.includes("thieves") ||
-      keyName.includes("dieb") ||
-      label.includes("thief") ||
-      label.includes("thieves") ||
-      label.includes("diebes");
+      keyName.includes("thief") || keyName.includes("thieves") || keyName.includes("dieb") ||
+      label.includes("thief") || label.includes("thieves") || label.includes("diebes");
 
     if (!looksLikeThievesTool) continue;
 
     hasToolsEntry = true;
-
     const candidates = ["prof", "proficient", "value", "base"];
     let best = 0;
     for (const prop of candidates) {
@@ -261,16 +269,15 @@ function getThievesToolsInfo(actor) {
   };
 }
 
-/* ---------------- Config ---------------- */
+/* ---------------- Config App ---------------- */
 
 class LockpickingConfigApp extends FormApplication {
 
-  /* --- NEU: Konstruktor akzeptiert preSelectedActorId --- */
+  // Konstruktor erweitert für Auto-Selektion
   constructor(preSelectedActorId = null, options = {}) {
     super(null, options);
     this.preSelectedActorId = preSelectedActorId;
   }
-  /* ---------------------------------------------------- */
 
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -283,54 +290,35 @@ class LockpickingConfigApp extends FormApplication {
 
   getData() {
     const groups = [];
-
     for (const user of game.users) {
       if (!user.active || user.isGM) continue;
-
-      const chars = game.actors.filter(a =>
-        a.type === "character" &&
-        a.testUserPermission(user, "OWNER")
-      );
-
+      const chars = game.actors.filter(a => a.type === "character" && a.testUserPermission(user, "OWNER"));
       if (!chars.length) continue;
-
       groups.push({
         userId: user.id,
         userName: user.name,
         options: chars.map(c => ({ actorId: c.id, actorName: c.name }))
       });
     }
-
     return { groups, defaultDc: 15 };
   }
 
-  /* --- NEU: Nach dem Rendern den Dropdown-Wert setzen --- */
+  // Auto-Selektion im Dropdown nach dem Rendern
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Falls wir eine Vorauswahl haben, setzen wir das Dropdown-Feld
     if (this.preSelectedActorId) {
-      // Wir müssen herausfinden, welcher User diesen Actor besitzt,
-      // um den Value-String "actorId|userId" zu bauen.
       const actor = game.actors.get(this.preSelectedActorId);
       if (actor) {
-        // Finde den ersten aktiven User, der Owner ist (kein GM)
-        const ownerUser = game.users.find(u => 
-          !u.isGM && u.active && actor.testUserPermission(u, "OWNER")
-        );
-
+        const ownerUser = game.users.find(u => !u.isGM && u.active && actor.testUserPermission(u, "OWNER"));
         if (ownerUser) {
           const valueString = `${this.preSelectedActorId}|${ownerUser.id}`;
-          // Das <select> Element hat im Template meist name="selection"
           const selectEl = html.find("[name='selection']");
-          if (selectEl.length) {
-            selectEl.val(valueString);
-          }
+          if (selectEl.length) selectEl.val(valueString);
         }
       }
     }
   }
-  /* ------------------------------------------------------ */
 
   async _updateObject(ev, data) {
     const selection = data.selection;
@@ -343,7 +331,6 @@ class LockpickingConfigApp extends FormApplication {
 
     const [actorId, userId] = selection.split("|");
     const actor = game.actors.get(actorId);
-    // const user = game.users.get(userId); // Wird hier nicht zwingend gebraucht, aber gut zu haben
 
     const info = getThievesToolsInfo(actor);
     if (!info.hasToolInventory && !info.hasToolsEntry) {
@@ -361,13 +348,7 @@ class LockpickingConfigApp extends FormApplication {
     if (hasReliable) allowedMistakes = Math.floor(trainingBonus / 2);
 
     const bonusBreakdown = info.bonusBreakdown;
-
-    const reliableInfo = {
-      hasReliable,
-      trainingBonus,
-      allowedMistakes
-    };
-
+    const reliableInfo = { hasReliable, trainingBonus, allowedMistakes };
     const runId = foundry.utils.randomID();
 
     await ChatMessage.create({
@@ -392,7 +373,7 @@ class LockpickingConfigApp extends FormApplication {
   }
 }
 
-/* ---------------- Game Window ---------------- */
+/* ---------------- Game App ---------------- */
 
 class LockpickingGameApp extends Application {
 
@@ -437,13 +418,11 @@ class LockpickingGameApp extends Application {
     };
   }
 
-  /* ------------- Difficulty ------------ */
+  /* --- Logic & Sockets --- */
 
   _generateSequence(len) {
     const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-    return Array.from({ length: len }, () =>
-      keys[Math.floor(Math.random() * keys.length)]
-    );
+    return Array.from({ length: len }, () => keys[Math.floor(Math.random() * keys.length)]);
   }
 
   _setupDifficulty() {
@@ -460,12 +439,8 @@ class LockpickingGameApp extends Application {
     this.remainingMs = this.totalTimeMs;
   }
 
-  /* ---------------- Socket --------------- */
-
   _emitSocket(action, extra = {}) {
-    if (this._spectator) return;
-    if (!this.runId) return;
-
+    if (this._spectator || !this.runId) return;
     const payload = {
       action,
       runId: this.runId,
@@ -477,14 +452,11 @@ class LockpickingGameApp extends Application {
       allowedMistakes: this.allowedMistakes,
       ...extra
     };
-
     game.socket.emit(`module.${LOCKPICKING_NAMESPACE}`, payload);
   }
 
   _onSocketEvent(payload) {
-    if (!this._spectator) return;
-    if (payload.runId !== this.runId) return;
-
+    if (!this._spectator || payload.runId !== this.runId) return;
     switch (payload.action) {
       case "start": this._onSocketStart(payload); break;
       case "step": this._onSocketStep(payload); break;
@@ -513,25 +485,18 @@ class LockpickingGameApp extends Application {
   }
 
   _onSocketStep(payload) {
-    const index = payload.index;
-    const key = payload.key;
-    if (typeof index !== "number") return;
-    if (!this.sequence.length) return;
-
+    const { index, key } = payload;
+    if (typeof index !== "number" || !this.sequence.length) return;
     const el = this._seq.querySelector(`[data-index="${index}"]`);
     if (el) {
       el.classList.remove("lp-sequence-step--pending");
       el.classList.add("lp-sequence-step--success");
       const icon = el.querySelector(".lp-sequence-step-icon");
-      if (icon) {
-        const arrow = ARROW_ICON_PATHS[key];
-        if (arrow) icon.style.backgroundImage = `url("${arrow}")`;
-      }
+      if (icon && ARROW_ICON_PATHS[key]) icon.style.backgroundImage = `url("${ARROW_ICON_PATHS[key]}")`;
     }
     this.currentIndex = index + 1;
     if (this.currentIndex >= this.sequence.length) {
       this._keyIconInner.style.backgroundImage = "";
-      this._keyPick.style.backgroundImage = "";
       this._keyPick.style.opacity = "0";
     } else {
       this._updateCurrentKeyIcon();
@@ -557,7 +522,7 @@ class LockpickingGameApp extends Application {
     setTimeout(() => this.close(), 1500);
   }
 
-  /* ---------------- UI init ---------------- */
+  /* --- UI Interaction --- */
 
   activateListeners(html) {
     this._html = html;
@@ -591,9 +556,7 @@ class LockpickingGameApp extends Application {
 
   _highlightCurrentStep() {
     if (!this._seq) return;
-    this._seq.querySelectorAll(".lp-sequence-step--current").forEach(el =>
-      el.classList.remove("lp-sequence-step--current")
-    );
+    this._seq.querySelectorAll(".lp-sequence-step--current").forEach(el => el.classList.remove("lp-sequence-step--current"));
     const el = this._seq.querySelector(`[data-index="${this.currentIndex}"]`);
     if (el) el.classList.add("lp-sequence-step--current");
   }
@@ -605,8 +568,7 @@ class LockpickingGameApp extends Application {
       this._keyPick.style.opacity = "0";
       return;
     }
-    const path = PICK_ICON_PATHS[key];
-    this._keyPick.style.backgroundImage = `url("${path}")`;
+    this._keyPick.style.backgroundImage = `url("${PICK_ICON_PATHS[key]}")`;
     this._keyPick.style.opacity = "1";
   }
 
@@ -625,32 +587,21 @@ class LockpickingGameApp extends Application {
   }
 
   _start() {
-    if (this._spectator) return;
-    if (this._running) return;
+    if (this._spectator || this._running) return;
     this._running = true;
     if (this._startBtn) this._startBtn.disabled = true;
-
     this._setupDifficulty();
     this._renderSequence();
-
     this.currentIndex = 0;
     this.mistakesMade = 0;
     this._updateMistakesInfo();
-
     if (this.sequence.length > 0) {
       this._updateCurrentKeyIcon();
       this._highlightCurrentStep();
     }
-
     this._status.textContent = "Los geht’s!";
     this._lastTs = null;
-
-    this._emitSocket("start", {
-      sequence: this.sequence,
-      totalTimeMs: this.totalTimeMs,
-      mistakesMade: this.mistakesMade
-    });
-
+    this._emitSocket("start", { sequence: this.sequence, totalTimeMs: this.totalTimeMs, mistakesMade: this.mistakesMade });
     this._raf = requestAnimationFrame(this._tick.bind(this));
   }
 
@@ -670,44 +621,33 @@ class LockpickingGameApp extends Application {
 
   _updateCurrentKeyIcon() {
     if (!this.sequence.length || this.currentIndex >= this.sequence.length) {
-      if (this._keyIconInner) {
-        this._keyIconInner.style.backgroundImage = "";
-      }
+      if (this._keyIconInner) this._keyIconInner.style.backgroundImage = "";
       this._updatePickForKey(null);
       return;
     }
     const key = this.sequence[this.currentIndex];
-    const arrowPath = ARROW_ICON_PATHS[key];
-    if (this._keyIconInner && arrowPath) {
-      this._keyIconInner.style.backgroundImage = `url("${arrowPath}")`;
-    }
+    if (this._keyIconInner && ARROW_ICON_PATHS[key]) this._keyIconInner.style.backgroundImage = `url("${ARROW_ICON_PATHS[key]}")`;
     this._updatePickForKey(key);
   }
 
   _updateMistakesInfo() {
-    if (this.allowedMistakes === 0) {
-      this._mistakesInfo.textContent = "";
-    } else {
-      const remain = this.allowedMistakes - this.mistakesMade;
-      this._mistakesInfo.textContent = `Fehler erlaubt: ${remain}/${this.allowedMistakes}`;
-    }
+    this._mistakesInfo.textContent = this.allowedMistakes === 0 
+      ? "" 
+      : `Fehler erlaubt: ${this.allowedMistakes - this.mistakesMade}/${this.allowedMistakes}`;
   }
 
   _tick(ts) {
-    if (this._lastTs === null) {
+    if (this._lastTs === null) this._lastTs = ts;
+    else {
+      this.remainingMs = Math.max(0, this.remainingMs - (ts - this._lastTs));
       this._lastTs = ts;
-    } else {
-      const dt = ts - this._lastTs;
-      this._lastTs = ts;
-      this.remainingMs = Math.max(0, this.remainingMs - dt);
     }
     const ratio = this.totalTimeMs > 0 ? (this.remainingMs / this.totalTimeMs) : 0;
-    const rStart = 76, gStart = 175, bStart = 80;
-    const rEnd = 244, gEnd = 67, bEnd = 54;
-    const r = Math.round(rStart + (rEnd - rStart) * (1 - ratio));
-    const g = Math.round(gStart + (gEnd - gStart) * (1 - ratio));
-    const b = Math.round(bStart + (bEnd - bStart) * (1 - ratio));
-
+    // Grün zu Rot Gradient
+    const r = Math.round(76 + (244 - 76) * (1 - ratio));
+    const g = Math.round(175 + (67 - 175) * (1 - ratio));
+    const b = Math.round(80 + (54 - 80) * (1 - ratio));
+    
     this._timerFill.style.backgroundColor = `rgb(${r},${g},${b})`;
     this._timerFill.style.width = `${ratio * 100}%`;
     this._timerText.textContent = `${(this.remainingMs / 1000).toFixed(1)}s`;
@@ -724,12 +664,10 @@ class LockpickingGameApp extends Application {
     if (this._spectator) return;
     const valid = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
     if (!valid.includes(ev.key)) return;
-
     ev.preventDefault();
     ev.stopPropagation();
 
     if (!this.sequence.length || this.currentIndex >= this.sequence.length) return;
-
     const expected = this.sequence[this.currentIndex];
 
     if (ev.key !== expected) {
@@ -747,7 +685,6 @@ class LockpickingGameApp extends Application {
 
     this._updatePickForKey(ev.key);
     this._flashCurrentKeyIcon();
-
     const el = this._seq.querySelector(`[data-index="${this.currentIndex}"]`);
     if (el) {
       el.classList.remove("lp-sequence-step--pending");
@@ -755,13 +692,10 @@ class LockpickingGameApp extends Application {
       const icon = el.querySelector(".lp-sequence-step-icon");
       if (icon) icon.style.backgroundImage = `url("${ARROW_ICON_PATHS[expected]}")`;
     }
-
     this._emitSocket("step", { index: this.currentIndex, key: ev.key });
     this.currentIndex++;
 
-    if (this.currentIndex >= this.sequence.length)
-      return this._finish(true, "Alle Tasten korrekt.");
-
+    if (this.currentIndex >= this.sequence.length) return this._finish(true, "Alle Tasten korrekt.");
     this._updateCurrentKeyIcon();
     this._highlightCurrentStep();
   }
@@ -771,16 +705,11 @@ class LockpickingGameApp extends Application {
     cancelAnimationFrame(this._raf);
     this._running = false;
     if (this._startBtn) this._startBtn.disabled = false;
-
     this._emitSocket("finish", { success, reason, mistakesMade: this.mistakesMade });
     this._updatePickForKey(null);
-
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-      content:
-        `Lockpicking – <b>${this.actor.name}</b><br>` +
-        `Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b><br>` +
-        `Fehler: ${this.mistakesMade} / ${this.allowedMistakes}`
+      content: `Lockpicking – <b>${this.actor.name}</b><br>Ergebnis: <b>${success ? "Erfolg" : "Misserfolg"}</b><br>Fehler: ${this.mistakesMade} / ${this.allowedMistakes}`
     });
     setTimeout(() => this.close(), 1500);
   }
