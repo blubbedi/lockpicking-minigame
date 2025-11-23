@@ -9,15 +9,15 @@
 
 /* Titel */
 .lp-title {
-  margin: 0 0 8px;   /* Etwas mehr Platz unter dem Titel */
-  font-size: 20px;   /* Minimal größer */
+  margin: 0 0 8px;    /* Etwas mehr Platz unter dem Titel */
+  font-size: 20px;    /* Minimal größer */
   font-weight: bold;
 }
 
 /* Meta */
 .lp-meta {
   margin-bottom: 12px;
-  font-size: 13px;   /* Bessere Lesbarkeit */
+  font-size: 13px;    /* Bessere Lesbarkeit */
   line-height: 1.4;
 }
 
@@ -48,7 +48,7 @@
   font-weight: 600;
 }
 
-/* kleine Erklärung unter den Tags */
+/* kleine Erklärung unter den Tags (Basis-Style für außerhalb des Schildes) */
 .lp-expl {
   margin-top: 6px;
   font-size: 12px;
@@ -56,7 +56,43 @@
   opacity: 0.9;
 }
 
-/* kleinere Sektionen */
+/* =========================================================
+ * NEU: MESSINGSCHILD FÜR ERKLÄRUNG
+ * ========================================================= */
+
+.lp-expl-shield {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 6px; 
+    
+    /* REINER CSS-GRADIENT FÜR GEWÜNSCHTEN MESING-LOOK */
+    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.45), transparent 60%),
+                linear-gradient(to bottom, #d4a755, #a37b38); 
+    
+    border: 1px solid #795548; /* Brauner Rand */
+    box-shadow: 
+        0 0 5px rgba(0,0,0,0.8),
+        inset 0 0 6px rgba(0,0,0,0.3);
+}
+
+/* Textfarbe im Schild (dunkel, damit lesbar auf dem Gold) */
+.lp-expl-shield .lp-expl {
+  color: #2b1200; 
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+/* Margins der inneren P-Tags anpassen, damit der Schild-Rand sauber ist */
+.lp-expl-shield p.lp-expl:first-child {
+    margin-top: 0;
+}
+.lp-expl-shield p.lp-expl:last-child {
+    margin-bottom: 0;
+}
+
+/* =========================================================
+ * ALLGEMEINE SEKTIONEN
+ * ========================================================= */
+
 .lp-section {
   margin-top: 12px;
   margin-bottom: 8px;
@@ -166,7 +202,8 @@
  * ========================================================= */
 
 .lp-current-key-box {
-  margin: 16px 0 12px;
+  /* FIX: Abstand nach oben für optische Zentrierung */
+  margin: 36px 0 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -193,7 +230,8 @@
 }
 
 .lp-current-key-arrow {
-  margin-top: 10px;   /* verschiebt NUR den Pfeil nach unten */
+  /* FIX: Abstand zum Loch reduziert */
+  margin-top: 15px; 
   width: 72px;
   height: 72px;
   display: flex;
@@ -363,7 +401,6 @@
  * ========================================================= */
 
 /* Außenrahmen – Steinmauer */
-/* ÄNDERUNG: Padding vergrößert (10px -> 28px) für mehr "Stein" */
 .window-app#lockpicking-game .window-content {
   position: relative;
   padding: 28px; 
@@ -377,7 +414,6 @@
 }
 
 /* Innere Eisenplatte */
-/* ÄNDERUNG: Padding vergrößert (8px -> 20px) damit Text nicht am Rand klebt */
 .window-app#lockpicking-game .lp-game-root {
   position: relative;
   z-index: 1;
@@ -407,8 +443,6 @@
 }
 
 /* Angedeuteter Rahmen/Nieten */
-/* Der Rahmen bleibt am Rand (inset: 6px), aber durch das erhöhte Padding
-   des Eltern-Elements (20px) ist der Text jetzt sicher INNERHALB */
 .window-app#lockpicking-game .lp-game-root::after {
   content: "";
   position: absolute;
