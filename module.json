@@ -2,10 +2,11 @@
   "id": "lockpicking-minigame",
   "title": "Lockpicking Minigame",
   "description": "Ein kleines Schlossknack-Minispiel für Foundry VTT.",
-  "version": "1.1.8",
+  "version": "1.0.0",
   "compatibility": {
     "minimum": "11",
-    "verified": "11"
+    "verified": "12"
+    "maximum": "13"
   },
   "authors": [
     {
@@ -37,3 +38,4 @@
   "license": "LICENSE",
   "socket": true
 }
+
