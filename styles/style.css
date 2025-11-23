@@ -166,7 +166,7 @@
  * ========================================================= */
 
 .lp-current-key-box {
-  margin: 16px 0 12px;
+  margin: 32px 0 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
