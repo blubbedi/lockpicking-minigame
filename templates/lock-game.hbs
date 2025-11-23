@@ -21,36 +21,41 @@
       {{/if}}
     </div>
 
-    {{!-- Bonus-Zusammensetzung (DEX + Übung/Expertise) --}}
-    {{#if bonusBreakdown}}
-      <p class="lp-expl">
-        {{localize "LOCKPICKING.BonusBreakdown"}}
-        DEX {{numberFormat bonusBreakdown.dexMod sign=true}}
-        {{#if bonusBreakdown.profPart}}
-          + {{bonusBreakdown.profLabel}} {{numberFormat bonusBreakdown.profPart sign=true}}
-        {{/if}}
-        = <b>{{numberFormat bonusBreakdown.totalBonus sign=true}}</b>
-      </p>
-    {{/if}}
+    {{!-- NEU: Explanations-Shield beginnt hier --}}
+    <div class="lp-expl-shield">
 
-    {{!-- Erklärung Übungsbonus / Reliable Talent / Fehlversuche --}}
-    {{#if reliableInfo}}
-      <p class="lp-expl">
-        {{!-- FIX: Verwendung von {{{...}}} für HTML-Tags in lokalisierten Strings --}}
-        {{{localize "LOCKPICKING.Explanation.Bonus" label=bonusBreakdown.profLabel bonus=reliableInfo.trainingBonus}}}
-        
-        {{#if reliableInfo.hasReliable}}
-          {{{localize "LOCKPICKING.Explanation.Reliable" mistakes=reliableInfo.allowedMistakes}}}
-        {{else}}
-          {{{localize "LOCKPICKING.Explanation.NoReliable"}}}
-        {{/if}}
-      </p>
-    {{/if}}
+      {{!-- Bonus-Zusammensetzung (DEX + Übung/Expertise) --}}
+      {{#if bonusBreakdown}}
+        <p class="lp-expl">
+          {{localize "LOCKPICKING.BonusBreakdown"}}
+          DEX {{numberFormat bonusBreakdown.dexMod sign=true}}
+          {{#if bonusBreakdown.profPart}}
+            + {{bonusBreakdown.profLabel}} {{numberFormat bonusBreakdown.profPart sign=true}}
+          {{/if}}
+          = <b>{{numberFormat bonusBreakdown.totalBonus sign=true}}</b>
+        </p>
+      {{/if}}
 
-    <p class="lp-expl">
-      {{!-- FIX: Auch hier Verwendung von {{{...}}} für HTML-Freigabe --}}
-      {{{localize "LOCKPICKING.Explanation.Instructions"}}}
-    </p>
+      {{!-- Erklärung Übungsbonus / Reliable Talent / Fehlversuche --}}
+      {{#if reliableInfo}}
+        <p class="lp-expl">
+          {{{localize "LOCKPICKING.Explanation.Bonus" label=bonusBreakdown.profLabel bonus=reliableInfo.trainingBonus}}}
+          
+          {{#if reliableInfo.hasReliable}}
+            {{{localize "LOCKPICKING.Explanation.Reliable" mistakes=reliableInfo.allowedMistakes}}}
+          {{else}}
+            {{{localize "LOCKPICKING.Explanation.NoReliable"}}}
+          {{/if}}
+        </p>
+      {{/if}}
+
+      <p class="lp-expl lp-expl--last">
+        {{{localize "LOCKPICKING.Explanation.Instructions"}}}
+      </p>
+
+    </div>
+    {{!-- Explanations-Shield endet hier --}}
+
   </div>
 
   <div class="lp-section">
