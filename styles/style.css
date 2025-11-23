@@ -47,7 +47,7 @@
   font-weight: 600;
 }
 
-/* kleine Erklärung unter den Tags (optional) */
+/* kleine Erklärung unter den Tags */
 .lp-expl {
   margin-top: 4px;
   font-size: 11px;
@@ -150,12 +150,6 @@
   transform: translateY(-1px);
 }
 
-/* (optional) expliziter Fehler-Step – falls später genutzt */
-.lp-sequence-step--fail {
-  background: #f44336;
-  border-color: #b71c1c;
-}
-
 /* Icon in Step */
 .lp-sequence-step-icon {
   width: 18px;
@@ -184,7 +178,6 @@
   border-radius: 50%;
   border: 2px solid #000;
 
-  /* HIER KEYHOLE-IMAGE ANPASSEN, FALLS ANDERS BENANNT */
   background:
     url("../textures/keyhole.png") center center no-repeat;
   background-size: contain;
@@ -211,7 +204,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 60px;              /* ggf. an deine Pick-Bilder anpassen */
+  width: 60px;
   height: 60px;
   transform: translate(-50%, -65%);
   background-repeat: no-repeat;
@@ -219,7 +212,7 @@
   background-size: contain;
   pointer-events: none;
   opacity: 1;
-  z-index: 1;               /* unter dem Pfeil */
+  z-index: 1;
 }
 
 /* Pfeil (oberste Ebene) */
@@ -240,18 +233,9 @@
 }
 
 @keyframes lp-key-hit {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
-  }
-  50% {
-    transform: scale(0.9);
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
-  }
+  0% { transform: scale(1); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
+  50% { transform: scale(0.9); box-shadow: 0 0 12px rgba(255, 255, 255, 0.9); }
+  100% { transform: scale(1); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
 }
 
 /* negativer „Error“-Effekt bei falscher Taste */
@@ -260,27 +244,12 @@
 }
 
 @keyframes lp-key-error {
-  0% {
-    transform: translateX(0);
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
-  }
-  20% {
-    transform: translateX(-3px);
-    box-shadow: 0 0 10px rgba(244, 67, 54, 0.9);
-  }
-  40% {
-    transform: translateX(3px);
-  }
-  60% {
-    transform: translateX(-2px);
-  }
-  80% {
-    transform: translateX(2px);
-  }
-  100% {
-    transform: translateX(0);
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
-  }
+  0% { transform: translateX(0); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
+  20% { transform: translateX(-3px); box-shadow: 0 0 10px rgba(244, 67, 54, 0.9); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  100% { transform: translateX(0); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
 }
 
 /* Label unter aktueller Taste */
@@ -331,9 +300,7 @@
   cursor: pointer;
 }
 
-.lp-btn:hover {
-  background: #d4d4d4;
-}
+.lp-btn:hover { background: #d4d4d4; }
 
 .lp-btn--primary {
   background: #3f51b5;
@@ -341,12 +308,12 @@
   color: white;
 }
 
-.lp-btn--primary:hover {
-  background: #3648b0;
-}
+.lp-btn--primary:hover { background: #3648b0; }
+
 
 /* =========================================================
  * NEU: Trigger-Button im Charakterbogen (Tidy5e Support)
+ * Style: "Goldener Schlüssel"
  * ========================================================= */
 
 .lockpicking-trigger {
@@ -354,31 +321,39 @@
   align-items: center;
   justify-content: center;
   
-  /* Unauffälliges Grau, passt gut in Dark Mode */
-  color: #adadad; 
+  /* Look: Dunkler Hintergrund + Goldenes Icon */
+  background: rgba(0, 0, 0, 0.3);       /* Hebt den Button vom Hintergrund ab */
+  color: #ffd54f;                       /* Goldene Farbe (Matt) */
+  border: 1px solid rgba(255, 213, 79, 0.3); /* Dezenter Rahmen */
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  
   margin: 0 4px;
   cursor: pointer;
   
-  /* Definierte Größe für sauberes Layout */
-  width: 20px;
-  height: 20px;
+  /* Größe etwas definierter machen */
+  width: 24px; 
+  height: 24px;
   border-radius: 4px;
+  
   transition: all 0.2s ease;
+  vertical-align: middle;
 }
 
-/* Hover Effekt */
+/* Hover Effekt: Helleres Gold und leuchten */
 .lockpicking-trigger:hover {
-  color: #d9534f; /* Leuchtendes Rot */
-  background: rgba(217, 83, 79, 0.1);
-  text-shadow: 0 0 5px rgba(217, 83, 79, 0.6);
-  transform: scale(1.1);
+  background: rgba(255, 213, 79, 0.15);
+  color: #fffde7;                       /* Fast Weißes Gold */
+  border-color: #ffd54f;                /* Hellerer Rahmen */
+  box-shadow: 0 0 6px rgba(255, 213, 79, 0.6);
+  transform: translateY(-1px);          /* Minimales "Anheben" */
 }
 
-/* Speziell für Tidy5e Listen und Tool-Rows */
+/* Speziell für Tidy5e Listen und Tool-Rows Ausrichtung */
 .tidy5e-sheet .item .lockpicking-trigger,
 .tidy5e-sheet .tool-row .lockpicking-trigger {
   vertical-align: middle;
 }
+
 
 /* =========================================================
  * FENSTER-LOOK: Mittelalterliches Schloss
@@ -514,7 +489,6 @@
 }
 
 .window-app#lockpicking-game .lp-timer-fill {
-  /* Startfarbe, wird von JS (backgroundColor) überschrieben */
   background-color: #4caf50;
 }
 
