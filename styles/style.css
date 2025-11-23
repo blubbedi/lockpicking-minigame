@@ -44,7 +44,7 @@
 .lp-tag--reliable {
   background: #fff7e0;
   border-color: #ffc966;
-  color: #8a5a00;
+  color: #8a00;
   font-weight: 600;
 }
 
@@ -65,9 +65,10 @@
     padding: 10px 12px;
     border-radius: 6px; 
     
-    /* REINER CSS-GRADIENT FÜR GEWÜNSCHTEN MESING-LOOK */
-    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.45), transparent 60%),
-                linear-gradient(to bottom, #d4a755, #a37b38); 
+    /* TEXTUR-FIX: Verwendung deiner Textur 'textures/brass.jpg' */
+    background: url("../textures/brass.jpg") center center;
+    background-repeat: repeat; 
+    background-size: 150px 150px; /* Standardgröße zum Kacheln (Passe diesen Wert bei Bedarf an) */
     
     border: 1px solid #795548; /* Brauner Rand */
     box-shadow: 
