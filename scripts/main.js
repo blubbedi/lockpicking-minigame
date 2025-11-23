@@ -5,7 +5,7 @@
  * - Tidy5e & Default Sheet Support (Button Injection)
  * - Socket Sync für GM/Spectator Mode
  * - Reliable Talent / Expertise Support
- * - SOUND SUPPORT (Neu integriert)
+ * - SOUND SUPPORT (Fix für Foundry v12+)
  */
 
 const LOCKPICKING_NAMESPACE = "lockpicking-minigame";
@@ -24,7 +24,7 @@ const PICK_ICON_PATHS = {
   ArrowRight: "modules/lockpicking-minigame/icons/lockpick-right.png"
 };
 
-/* --- NEU: Sound Pfade --- */
+/* --- Sound Pfade --- */
 const SOUND_PATHS = {
   hit: "modules/lockpicking-minigame/sounds/click.mp3",
   miss: "modules/lockpicking-minigame/sounds/error.mp3",
@@ -282,11 +282,13 @@ class LockpickingGameApp extends Application {
     return { actorName: this.actor.name, dc: this.config.dc, bonus: this.config.bonus, disadvantage: this.config.disadvantage, allowedMistakes: this.allowedMistakes, reliableTalent: this.config.reliableTalent, bonusBreakdown: this.config.bonusBreakdown, reliableInfo: this.config.reliableInfo };
   }
 
-  /* --- NEU: Sound Helper --- */
+  /* --- FIX: Sound Helper --- */
   _playSound(type) {
     const src = SOUND_PATHS[type];
-    // Volume 0.5 ist Standard, Loop false, Autoplay true
-    if (src) AudioHelper.play({ src, volume: 0.5, autoplay: true, loop: false }, false);
+    if (src) {
+      // FIX FÜR FOUNDRY V12: Verwende foundry.audio.AudioHelper
+      foundry.audio.AudioHelper.play({ src, volume: 0.5, autoplay: true, loop: false }, false);
+    }
   }
 
   _generateSequence(len) { return Array.from({ length: len }, () => ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"][Math.floor(Math.random() * 4)]); }
@@ -327,9 +329,7 @@ class LockpickingGameApp extends Application {
   }
 
   _onSocketStep(p) {
-    // --- NEU: Sound für Zuschauer ---
     this._playSound("hit");
-
     const el = this._seq.querySelector(`[data-index="${p.index}"]`);
     if (el) {
       el.classList.remove("lp-sequence-step--pending");
@@ -347,9 +347,7 @@ class LockpickingGameApp extends Application {
   }
 
   _onSocketMistake(p) {
-    // --- NEU: Sound für Zuschauer ---
     this._playSound("miss");
-
     this.mistakesMade = p.mistakesMade;
     this._updateMistakesInfo();
     this._status.textContent = `Falsche Taste (${this.mistakesMade}/${this.allowedMistakes})`;
@@ -357,7 +355,6 @@ class LockpickingGameApp extends Application {
   }
 
   _onSocketFinish(p) {
-    // --- NEU: Sound für Zuschauer ---
     if (p.success) this._playSound("win");
     else this._playSound("lose");
 
@@ -461,7 +458,6 @@ class LockpickingGameApp extends Application {
     
     if (this.remainingMs <= 0) {
       if (!this._spectator) {
-        // --- NEU: Sound bei Zeitablauf ---
         this._playSound("lose");
         return this._finish(false, "Zeit abgelaufen");
       }
@@ -479,7 +475,6 @@ class LockpickingGameApp extends Application {
     const exp = this.sequence[this.currentIndex];
 
     if (ev.key !== exp) {
-      // --- NEU: Sound Miss ---
       this._playSound("miss");
       
       this._flashErrorKeyIcon();
@@ -493,7 +488,6 @@ class LockpickingGameApp extends Application {
       return this._finish(false, "Falsche Taste");
     }
 
-    // --- NEU: Sound Hit ---
     this._playSound("hit");
 
     this._updatePickForKey(ev.key);
@@ -511,7 +505,6 @@ class LockpickingGameApp extends Application {
   }
 
   async _finish(success, reason) {
-    // --- NEU: Sound Finish ---
     if (success) this._playSound("win");
     else this._playSound("lose");
 
