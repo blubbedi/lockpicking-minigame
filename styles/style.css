@@ -193,7 +193,7 @@
 }
 
 .lp-current-key-arrow {
-  margin-top: 16px;   /* verschiebt NUR den Pfeil nach unten */
+  margin-top: 10px;   /* verschiebt NUR den Pfeil nach unten */
   width: 72px;
   height: 72px;
   display: flex;
