@@ -536,3 +536,18 @@
   background: linear-gradient(to bottom, #3f51b5, #283593);
   box-shadow: 0 0 8px rgba(92,107,192,0.9);
 }
+
+/* =========================================================
+ * NEU: Trigger-Button im Charakterbogen
+ * ========================================================= */
+.lockpicking-trigger {
+  color: #4a4a4a;
+  margin-right: 6px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.lockpicking-trigger:hover {
+  color: #d9534f; /* Rötlich beim Hovern */
+  text-shadow: 0 0 3px rgba(217, 83, 79, 0.4);
+}
