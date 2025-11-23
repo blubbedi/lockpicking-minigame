@@ -1,9 +1,9 @@
 <div class="lp-game-root">
 
-  <h2 class="lp-title">Schlossknacken</h2>
+  <h2 class="lp-title">{{localize "LOCKPICKING.Title"}}</h2>
 
   <div class="lp-meta">
-    <div><b>{{actorName}}</b> versucht ein Schloss zu knacken.</div>
+    <div><b>{{actorName}}</b> {{localize "LOCKPICKING.Attempts"}}</div>
 
     <div class="lp-tags-row">
       <span class="lp-tag lp-tag--dc">DC: {{dc}}</span>
@@ -11,20 +11,20 @@
 
       {{!-- Reliable Talent anzeigen, wenn aktiv --}}
       {{#if reliableTalent}}
-        <span class="lp-tag lp-tag--reliable">Verlässliches Talent</span>
+        <span class="lp-tag lp-tag--reliable">{{localize "LOCKPICKING.ReliableTalent"}}</span>
       {{/if}}
 
       {{#if disadvantage}}
-        <span class="lp-tag lp-tag--bad">mit Nachteil</span>
+        <span class="lp-tag lp-tag--bad">{{localize "LOCKPICKING.Disadvantage"}}</span>
       {{else}}
-        <span class="lp-tag lp-tag--good">ohne Nachteil</span>
+        <span class="lp-tag lp-tag--good">{{localize "LOCKPICKING.NoDisadvantage"}}</span>
       {{/if}}
     </div>
 
     {{!-- Bonus-Zusammensetzung (DEX + Übung/Expertise) --}}
     {{#if bonusBreakdown}}
       <p class="lp-expl">
-        Bonus-Zusammensetzung:
+        {{localize "LOCKPICKING.BonusBreakdown"}}
         DEX {{numberFormat bonusBreakdown.dexMod sign=true}}
         {{#if bonusBreakdown.profPart}}
           + {{bonusBreakdown.profLabel}} {{numberFormat bonusBreakdown.profPart sign=true}}
@@ -36,28 +36,23 @@
     {{!-- Erklärung Übungsbonus / Reliable Talent / Fehlversuche --}}
     {{#if reliableInfo}}
       <p class="lp-expl">
-        Übungsbonus für Diebeswerkzeug ({{bonusBreakdown.profLabel}}):
-        <b>{{reliableInfo.trainingBonus}}</b>.
+        {{localize "LOCKPICKING.Explanation.Bonus" label=bonusBreakdown.profLabel bonus=reliableInfo.trainingBonus}}
+        
         {{#if reliableInfo.hasReliable}}
-          Mit <b>Verlässliches Talent</b> entspricht das
-          <b>{{reliableInfo.allowedMistakes}}</b> erlaubten Fehlversuchen
-          (Übungsbonus / 2).
+          {{localize "LOCKPICKING.Explanation.Reliable" mistakes=reliableInfo.allowedMistakes}}
         {{else}}
-          Ohne Verlässliches Talent ergeben sich aus dem Übungsbonus
-          keine zusätzlichen Fehlversuche (0).
+          {{localize "LOCKPICKING.Explanation.NoReliable"}}
         {{/if}}
       </p>
     {{/if}}
 
     <p class="lp-expl">
-      Drücke nacheinander die angezeigten Pfeiltasten, bevor der Zeitbalken leer ist.
-      Geschaffte Schritte werden oben grün markiert.
+      {{localize "LOCKPICKING.Explanation.Instructions"}}
     </p>
   </div>
 
-  <!-- Fortschritt / Timer -->
   <div class="lp-section">
-    <div class="lp-section-label">Fortschritt:</div>
+    <div class="lp-section-label">{{localize "LOCKPICKING.Progress"}}</div>
     <div class="lp-timer-bar">
       <div class="lp-timer-fill"></div>
       <div class="lp-timer-text">0.0s</div>
@@ -65,33 +60,28 @@
     <div class="lp-mistakes-info"></div>
   </div>
 
-  <!-- Gesamte Sequenz -->
   <div class="lp-section">
-    <div class="lp-section-label">Gesamtsequenz:</div>
+    <div class="lp-section-label">{{localize "LOCKPICKING.Sequence"}}</div>
     <div class="lp-sequence-steps"></div>
   </div>
 
-  <!-- Aktuelle Taste (Schlüsselloch + Dietrich + Pfeil) -->
   <div class="lp-current-key-box">
-    <!-- Keyhole + Dietrich -->
     <div class="lp-current-key-icon">
       <div class="lp-current-key-pick"></div>
     </div>
 
-    <!-- Aktueller Step-Pfeil unterhalb des Keyholes -->
     <div class="lp-current-key-arrow">
       <div class="lp-current-key-icon-inner" data-key=""></div>
     </div>
 
-    <div class="lp-current-key-label">Aktuelle Taste</div>
+    <div class="lp-current-key-label">{{localize "LOCKPICKING.CurrentKey"}}</div>
   </div>
 
-  <!-- Status & Buttons -->
-  <div class="lp-status-text">Bereit – klicke »Start«.</div>
+  <div class="lp-status-text">{{localize "LOCKPICKING.Ready"}}</div>
 
   <div class="lp-buttons">
-    <button class="lp-btn lp-btn--primary" data-action="start-game">Start</button>
-    <button class="lp-btn" data-action="cancel-game">Abbrechen</button>
+    <button class="lp-btn lp-btn--primary" data-action="start-game">{{localize "LOCKPICKING.Start"}}</button>
+    <button class="lp-btn" data-action="cancel-game">{{localize "LOCKPICKING.Cancel"}}</button>
   </div>
 
 </div>
