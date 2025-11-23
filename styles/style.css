@@ -166,7 +166,7 @@
  * ========================================================= */
 
 .lp-current-key-box {
-  margin: 32px 0 12px;
+  margin: 16px 0 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -193,7 +193,7 @@
 }
 
 .lp-current-key-arrow {
-  margin-top: 40px;   /* verschiebt NUR den Pfeil nach unten */
+  margin-top: 16px;   /* verschiebt NUR den Pfeil nach unten */
   width: 72px;
   height: 72px;
   display: flex;
