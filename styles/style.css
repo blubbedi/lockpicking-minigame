@@ -47,7 +47,7 @@
   font-weight: 600;
 }
 
-/* kleine Erklärung unter den Tags */
+/* kleine Erklärung unter den Tags (optional) */
 .lp-expl {
   margin-top: 4px;
   font-size: 11px;
@@ -86,7 +86,7 @@
 .lp-timer-fill {
   width: 100%;
   height: 100%;
-  background: #4caf50;
+  background: #4caf50;        /* Startfarbe – wird per JS überschrieben */
   transition: width 0.04s linear;
 }
 
@@ -102,6 +102,7 @@
   pointer-events: none;
 }
 
+/* Info über erlaubte Fehler */
 .lp-mistakes-info {
   font-size: 11px;
   margin-top: 3px;
@@ -142,12 +143,20 @@
   border-color: #3e8e41;
 }
 
+/* aktueller Schritt – Hervorhebung */
 .lp-sequence-step--current {
   box-shadow: 0 0 5px #ffd54f, 0 0 10px #ffb300;
   border-color: #ffb300;
   transform: translateY(-1px);
 }
 
+/* (optional) expliziter Fehler-Step – falls später genutzt */
+.lp-sequence-step--fail {
+  background: #f44336;
+  border-color: #b71c1c;
+}
+
+/* Icon in Step */
 .lp-sequence-step-icon {
   width: 18px;
   height: 18px;
@@ -174,8 +183,10 @@
   height: 72px;
   border-radius: 50%;
   border: 2px solid #000;
-  
-  background: url("../textures/keyhole.png") center center no-repeat;
+
+  /* HIER KEYHOLE-IMAGE ANPASSEN, FALLS ANDERS BENANNT */
+  background:
+    url("../textures/keyhole.png") center center no-repeat;
   background-size: contain;
 
   display: flex;
@@ -187,7 +198,7 @@
 }
 
 .lp-current-key-arrow {
-  margin-top: 35px;
+  margin-top: 35px;   /* verschiebt NUR den Pfeil nach unten */
   width: 72px;
   height: 72px;
   display: flex;
@@ -195,11 +206,12 @@
   justify-content: center;
 }
 
+/* Dietrich (mittlere Ebene über dem Schlüsselloch) */
 .lp-current-key-pick {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 60px;
+  width: 60px;              /* ggf. an deine Pick-Bilder anpassen */
   height: 60px;
   transform: translate(-50%, -65%);
   background-repeat: no-repeat;
@@ -207,9 +219,10 @@
   background-size: contain;
   pointer-events: none;
   opacity: 1;
-  z-index: 1;
+  z-index: 1;               /* unter dem Pfeil */
 }
 
+/* Pfeil (oberste Ebene) */
 .lp-current-key-icon-inner {
   position: relative;
   width: 42px;
@@ -221,29 +234,56 @@
   z-index: 2;
 }
 
+/* kleiner „Hit“-Effekt bei korrekter Taste */
 .lp-current-key-icon--hit {
   animation: lp-key-hit 0.12s ease-out;
 }
 
 @keyframes lp-key-hit {
-  0% { transform: scale(1); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
-  50% { transform: scale(0.9); box-shadow: 0 0 12px rgba(255, 255, 255, 0.9); }
-  100% { transform: scale(1); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    transform: scale(0.9);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  }
 }
 
+/* negativer „Error“-Effekt bei falscher Taste */
 .lp-current-key-icon--error {
   animation: lp-key-error 0.18s ease-out;
 }
 
 @keyframes lp-key-error {
-  0% { transform: translateX(0); }
-  20% { transform: translateX(-3px); box-shadow: 0 0 10px rgba(244, 67, 54, 0.9); }
-  40% { transform: translateX(3px); }
-  60% { transform: translateX(-2px); }
-  80% { transform: translateX(2px); }
-  100% { transform: translateX(0); box-shadow: 0 0 8px rgba(0, 0, 0, 0.7); }
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  }
+  20% {
+    transform: translateX(-3px);
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.9);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  }
 }
 
+/* Label unter aktueller Taste */
 .lp-current-key-label {
   margin-top: 6px;
   font-size: 11px;
@@ -291,7 +331,9 @@
   cursor: pointer;
 }
 
-.lp-btn:hover { background: #d4d4d4; }
+.lp-btn:hover {
+  background: #d4d4d4;
+}
 
 .lp-btn--primary {
   background: #3f51b5;
@@ -299,70 +341,92 @@
   color: white;
 }
 
-.lp-btn--primary:hover { background: #3648b0; }
+.lp-btn--primary:hover {
+  background: #3648b0;
+}
 
 /* =========================================================
  * NEU: Trigger-Button im Charakterbogen (Tidy5e Support)
  * ========================================================= */
+
 .lockpicking-trigger {
-  color: #adadad; /* Standard grau für Dark Themes */
-  margin-left: 5px;
-  margin-right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Unauffälliges Grau, passt gut in Dark Mode */
+  color: #adadad; 
+  margin: 0 4px;
   cursor: pointer;
-  transition: color 0.2s, transform 0.2s;
-  display: inline-block; 
-  vertical-align: middle;
+  
+  /* Definierte Größe für sauberes Layout */
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
+/* Hover Effekt */
 .lockpicking-trigger:hover {
-  color: #d9534f; 
+  color: #d9534f; /* Leuchtendes Rot */
+  background: rgba(217, 83, 79, 0.1);
   text-shadow: 0 0 5px rgba(217, 83, 79, 0.6);
   transform: scale(1.1);
 }
 
-/* Speziell für Tidy5e Listen, damit es vertikal zentriert ist */
-.tidy5e-sheet .item .lockpicking-trigger {
-  align-self: center;
+/* Speziell für Tidy5e Listen und Tool-Rows */
+.tidy5e-sheet .item .lockpicking-trigger,
+.tidy5e-sheet .tool-row .lockpicking-trigger {
+  vertical-align: middle;
 }
-
 
 /* =========================================================
  * FENSTER-LOOK: Mittelalterliches Schloss
  * ========================================================= */
 
+/* Außenrahmen – Steinmauer */
 .window-app#lockpicking-game .window-content {
   position: relative;
   padding: 10px;
   background: url("../textures/stone-wall.jpg");
   background-size: cover;
   border-radius: 8px;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.9), 0 0 18px rgba(0,0,0,0.9);
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,0.9),
+    0 0 18px rgba(0,0,0,0.9);
   overflow: hidden;
 }
 
+/* Innere Eisenplatte */
 .window-app#lockpicking-game .lp-game-root {
   position: relative;
   z-index: 1;
   padding: 8px;
   border-radius: 6px;
-  background: radial-gradient(circle at top left, rgba(255,255,255,0.10), transparent 55%),
-              radial-gradient(circle at bottom right, rgba(0,0,0,0.55), transparent 60%),
-              url("../textures/metal-aged.jpg");
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.10), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(0,0,0,0.55), transparent 60%),
+    url("../textures/metal-aged.jpg");
   background-size: cover;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,0,0,0.8);
+  box-shadow:
+    inset 0 0 10px rgba(0,0,0,0.9),
+    0 0 0 1px rgba(0,0,0,0.8);
 }
 
+/* Vignette über der Eisenplatte */
 .window-app#lockpicking-game .lp-game-root::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   border-radius: 6px;
-  background: radial-gradient(circle at center, rgba(255,255,255,0.05), transparent 55%),
-              linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.65));
+  background:
+    radial-gradient(circle at center, rgba(255,255,255,0.05), transparent 55%),
+    linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.65));
   mix-blend-mode: multiply;
 }
 
+/* Angedeuteter Rahmen/Nieten */
 .window-app#lockpicking-game .lp-game-root::after {
   content: "";
   position: absolute;
@@ -370,12 +434,17 @@
   inset: 8px;
   border-radius: 6px;
   border: 1px dashed rgba(0,0,0,0.6);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.05), inset 0 0 4px rgba(0,0,0,0.8);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.05),
+    inset 0 0 4px rgba(0,0,0,0.8);
 }
 
+/* Titel / Texte auf Metall */
 .window-app#lockpicking-game .lp-title {
   color: #f5f5f5;
-  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.9);
+  text-shadow:
+    0 0 3px rgba(0,0,0,0.9),
+    0 0 8px rgba(0,0,0,0.9);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 700;
@@ -392,6 +461,7 @@
   text-shadow: 0 0 3px rgba(0,0,0,0.8);
 }
 
+/* Tags als Metall-/Wappenschilder */
 .window-app#lockpicking-game .lp-tag {
   padding: 2px 8px;
   border-radius: 999px;
@@ -400,37 +470,52 @@
   border: 1px solid #080808;
   font-size: 11px;
   color: #f5f5f5;
-  box-shadow: 0 0 3px rgba(0,0,0,0.8), inset 0 0 3px rgba(0,0,0,0.9);
+  box-shadow:
+    0 0 3px rgba(0,0,0,0.8),
+    inset 0 0 3px rgba(0,0,0,0.9);
   white-space: nowrap;
 }
 
 .window-app#lockpicking-game .lp-tag--dc {
-  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 60%), linear-gradient(to bottom, #424242, #1c1c1c);
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 60%),
+              linear-gradient(to bottom, #424242, #1c1c1c);
 }
 
 .window-app#lockpicking-game .lp-tag--bonus {
-  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 60%), linear-gradient(to bottom, #8d6e63, #4e342e);
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 60%),
+              linear-gradient(to bottom, #8d6e63, #4e342e);
 }
 
 .window-app#lockpicking-game .lp-tag--good {
-  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 60%), linear-gradient(to bottom, #558b2f, #2e7d32);
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 60%),
+              linear-gradient(to bottom, #558b2f, #2e7d32);
 }
 
 .window-app#lockpicking-game .lp-tag--bad {
-  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 60%), linear-gradient(to bottom, #b71c1c, #7f0000);
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 60%),
+              linear-gradient(to bottom, #b71c1c, #7f0000);
 }
 
 .window-app#lockpicking-game .lp-tag--reliable {
-  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(to bottom, #ffca28, #f57f17);
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5), transparent 60%),
+              linear-gradient(to bottom, #ffca28, #f57f17);
   border-color: #5d3a00;
   color: #2b1200;
   font-weight: 600;
 }
 
+/* Fortschrittsbalken im Metallrahmen */
 .window-app#lockpicking-game .lp-timer-bar {
   background: #111;
   border-color: #000;
-  box-shadow: inset 0 0 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.9);
+  box-shadow:
+    inset 0 0 6px rgba(0,0,0,0.95),
+    0 0 4px rgba(0,0,0,0.9);
+}
+
+.window-app#lockpicking-game .lp-timer-fill {
+  /* Startfarbe, wird von JS (backgroundColor) überschrieben */
+  background-color: #4caf50;
 }
 
 .window-app#lockpicking-game .lp-mistakes-info {
@@ -438,25 +523,33 @@
   text-shadow: 0 0 2px rgba(0,0,0,0.9);
 }
 
+/* Sequenzsteps als Messing-Tumblers */
 .window-app#lockpicking-game .lp-sequence-step {
   background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 60%),
               linear-gradient(to bottom, rgba(200,200,200,0.95), rgba(150,150,150,0.95));
   border: 1px solid #454545;
-  box-shadow: 0 0 2px rgba(0,0,0,0.7), inset 0 0 3px rgba(255,255,255,0.4);
+  box-shadow:
+    0 0 2px rgba(0,0,0,0.7),
+    inset 0 0 3px rgba(255,255,255,0.4);
 }
 
 .window-app#lockpicking-game .lp-sequence-step--success {
   background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%),
               linear-gradient(to bottom, #c0ca33, #827717);
   border-color: #5f5f00;
-  box-shadow: 0 0 4px rgba(220,231,117,0.9), inset 0 0 4px rgba(0,0,0,0.7);
+  box-shadow:
+    0 0 4px rgba(220,231,117,0.9),
+    inset 0 0 4px rgba(0,0,0,0.7);
 }
 
 .window-app#lockpicking-game .lp-sequence-step--current {
-  box-shadow: 0 0 5px #ffeb3b, 0 0 10px rgba(255,193,7,0.9);
+  box-shadow:
+    0 0 5px #ffeb3b,
+    0 0 10px rgba(255,193,7,0.9);
   border-color: #ffb300;
 }
 
+/* Buttons im „Schloss“-Look */
 .window-app#lockpicking-game .lp-btn {
   background: linear-gradient(to bottom, #555, #333);
   border-color: #000;
